@@ -1,16 +1,19 @@
-import React, { useEffect } from 'react';
-import axios from 'axios';
-import { useHistory } from 'react-router-dom';
+import React from 'react';
 
 const CLIENT_ID = 'your-client-id';
-const CLIENT_SECRET = 'your-client-secret';
-const REDIRECT_URI = 'your-redirect-uri';
+const REDIRECT_URI = 'http://localhost:3001/auth/callback';
 
+const QuickBooksAuth = () => {
+  const handleLogin = () => {
+    const authUrl = `https://appcenter.intuit.com/connect/oauth2?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=com.intuit.quickbooks.accounting`;
+    window.location.href = authUrl;
+  };
 
-const QuickBooksAuth = () => 
-  
-  (
-  <h1>Lets get you authenticateed</h1>
-)
+  return (
+    <div>
+      <button onClick={handleLogin}>Connect to QuickBooks</button>
+    </div>
+  );
+};
 
 export default QuickBooksAuth;
