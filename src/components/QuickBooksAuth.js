@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CLIENT_ID = 'lol';
+const CLIENT_ID = "ABM24BLIWnLP2yqajkarP3N7cs9JTtQrluZuNL6ID83u3HHwsY"
 const REDIRECT_URI = 'http://localhost:3001/auth/callback';
 const STATE = 'random-generated-state-string';  // Generate a unique state string for security
 const SCOPE = 'com.intuit.quickbooks.accounting';
