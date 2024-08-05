@@ -1,13 +1,13 @@
 import React from 'react';
 
-const CLIENT_ID = "ABM24BLIWnLP2yqajkarP3N7cs9JTtQrluZuNL6ID83u3HHwsY"
+// const CLIENT_ID = process.env.REACT_APP_CLIENT_ID;
 const REDIRECT_URI = 'http://localhost:3001/auth/callback';
 const STATE = 'random-generated-state-string';  // Generate a unique state string for security
 const SCOPE = 'com.intuit.quickbooks.accounting';
 
 const QuickBooksAuth = () => {
   const handleLogin = () => {
-    const authUrl = `https://appcenter.intuit.com/connect/oauth2?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&state=${STATE}`;
+    const authUrl = `https://appcenter.intuit.com/connect/oauth2?client_id=${process.env.REACT_APP_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&state=${STATE}`;
     window.location.href = authUrl;
   };
 
