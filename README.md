@@ -1,49 +1,186 @@
-# Getting Started with Create React App
+# Invoice Me - QuickBooks OAuth Invoice Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack application for creating and managing invoices through QuickBooks Online integration with OAuth authentication.
 
-## Available Scripts
+## 🚀 What This App Does
 
-In the project directory, you can run:
+This is a **QuickBooks invoice management application** with two main components:
+1. **Backend (Express server)** - Handles QuickBooks OAuth authentication and invoice creation
+2. **Frontend (React app)** - Provides UI for authentication, invoice creation, and customer management
 
-### `npm start`
+## 🏗️ Architecture
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Server**: Express.js running on port 3001
+- **Frontend**: React app running on port 3000
+- **Authentication**: QuickBooks OAuth 2.0
+- **Email**: Nodemailer integration for invoice delivery
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## ✨ Features
 
-### `npm test`
+- ✅ QuickBooks authentication via OAuth
+- ✅ Invoice creation with email sending
+- ✅ Navigation between different sections
+- 🚧 Customer management (in development)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 📁 Project Structure
 
-### `npm run build`
+```
+invoice-me/
+├── server.js                 # Express backend server
+├── package.json              # Dependencies and scripts
+├── .env                      # Environment variables
+├── public/                   # Static assets
+└── src/
+    ├── App.js               # Main React component
+    ├── index.js             # React entry point
+    └── components/
+        ├── Nav.js           # Navigation component
+        ├── QuickBooksAuth.js # OAuth authentication
+        ├── CreateInvoice.js  # Invoice creation form
+        └── FetchCustomers.js # Customer management
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 🛠️ Setup & Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 1. Install Dependencies
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm install
+npm install -D nodemon
+```
 
-### `npm run eject`
+### 2. Environment Configuration
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Your `.env` file should contain:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```env
+# QuickBooks OAuth Configuration
+CLIENT_ID=your_quickbooks_client_id_here
+CLIENT_SECRET=your_quickbooks_client_secret_here
+REDIRECT_URI=http://localhost:3001/auth/callback
+COMPANY_ID=your_company_id_here
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# React App Environment Variables
+REACT_APP_CLIENT_ID=your_quickbooks_client_id_here
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# Email Configuration
+EMAIL_USER=your_gmail_address@gmail.com
+EMAIL_PASS=your_gmail_app_password_here
+```
 
-## Learn More
+**Important**: Replace the placeholder values with your actual QuickBooks app credentials and Gmail settings.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 3. Gmail App Password Setup
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+For email functionality, you'll need a Gmail App Password:
+1. Enable 2-factor authentication on your Gmail account
+2. Generate an App Password for this application
+3. Use the App Password (not your regular Gmail password) in the `EMAIL_PASS` field
+
+## 🚦 Running the Application
+
+The application requires both backend and frontend servers to run simultaneously.
+
+### Start Both Servers
+
+**Terminal 1 - Backend Server:**
+```bash
+npm run dev
+```
+This starts the Express server on `http://localhost:3001`
+
+**Terminal 2 - Frontend Server:**
+```bash
+npm run react
+```
+This starts the React app on `http://localhost:3000`
+
+### Alternative Commands
+
+```bash
+# Production backend
+npm start
+
+# Build React for production
+npm run build
+
+# Run tests
+npm test
+```
+
+## 🌐 Usage
+
+1. **Open the App**: Navigate to `http://localhost:3000`
+2. **Authenticate**: Click "Connect to QuickBooks" to authorize the application
+3. **Create Invoice**: Use the invoice form to create and send invoices
+4. **Email Delivery**: Invoices are automatically emailed to customers
+
+## 🔄 Application Flow
+
+1. User clicks "Connect to QuickBooks"
+2. Redirected to QuickBooks OAuth consent page
+3. After authorization, redirected back to `/create-invoice`
+4. User fills out invoice form with customer details
+5. Invoice is created in QuickBooks and emailed to customer
+
+## 🛑 Stopping the Servers
+
+- Press `Ctrl+C` in each terminal window
+- Or use VS Code's terminal controls
+
+## 🔧 Development Notes
+
+### Environment Variables
+- Frontend variables must be prefixed with `REACT_APP_`
+- Backend uses standard environment variable names
+- The `.env` file should never be committed to version control
+
+### Ports
+- Backend: `3001` (Express server)
+- Frontend: `3000` (React development server)
+- Make sure both ports are available before starting
+
+### QuickBooks Sandbox
+- The app is configured for QuickBooks Sandbox environment
+- Change the base URL for production: `https://quickbooks.api.intuit.com`
+
+## 📝 Next Steps
+
+1. **Complete Email Setup**: Add your Gmail credentials to `.env`
+2. **Test OAuth Flow**: Ensure QuickBooks authentication works
+3. **Implement Customer Fetching**: Complete the `FetchCustomers` component
+4. **Add Error Handling**: Improve user experience with better error messages
+5. **Styling**: Add CSS for better visual design
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Invalid state parameter" error:**
+- Ensure the STATE variable matches between frontend and backend
+
+**Email not sending:**
+- Verify Gmail App Password is correct
+- Check that 2FA is enabled on Gmail account
+
+**OAuth redirect issues:**
+- Confirm REDIRECT_URI matches exactly in QuickBooks Developer Console
+- Ensure both servers are running
+
+**Port conflicts:**
+- Make sure ports 3000 and 3001 are not in use by other applications
+
+## 📚 Technologies Used
+
+- **Frontend**: React, React Router, Axios
+- **Backend**: Express.js, Body Parser, Dotenv
+- **Authentication**: QuickBooks OAuth 2.0
+- **Email**: Nodemailer
+- **Development**: Nodemon for auto-restart
+
+---
+
+*This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).*
 
 ### Code Splitting
 
