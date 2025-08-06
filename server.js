@@ -114,6 +114,11 @@ app.post('/create-invoice', async (req, res) => {
   const companyId = process.env.COMPANY_ID;
   
   console.log('Creating invoice for company:', companyId);
+  console.log('Invoice data received:', JSON.stringify(invoice, null, 2));
+  
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please connect to QuickBooks first.' });
+  }
   
   try {
     const response = await axios.post(`https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/invoice`, invoice, {
@@ -124,30 +129,43 @@ app.post('/create-invoice', async (req, res) => {
       },
     });
     const invoiceData = response.data;
+    console.log('Invoice created successfully:', JSON.stringify(invoiceData, null, 2));
 
-    // Send email with the invoice
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Send email with the invoice (optional - can be disabled for testing)
+    try {
+      const transporter = nodemailer.createTransporter({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: invoice.BillEmail.Address,
-      subject: 'Your Invoice from [Your Company]',
-      text: `Please find attached your invoice.`,
-      html: `<p>Please find attached your invoice.</p><p>Invoice ID: ${invoiceData.Id}</p>`,
-    };
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: invoice.BillEmail.Address,
+        subject: 'Your Invoice from [Your Company]',
+        text: `Please find attached your invoice.`,
+        html: `<p>Please find attached your invoice.</p><p>Invoice ID: ${invoiceData.QueryResponse?.Invoice?.[0]?.Id || 'N/A'}</p>`,
+      };
 
-    await transporter.sendMail(mailOptions);
+      await transporter.sendMail(mailOptions);
+      console.log('Email sent successfully to:', invoice.BillEmail.Address);
+    } catch (emailError) {
+      console.error('Email sending failed (but invoice was created):', emailError.message);
+      // Don't fail the whole request if email fails
+    }
 
     res.json(invoiceData);
   } catch (error) {
-    console.error('Error creating invoice', error.response.data);
-    res.status(500).send('Failed to create invoice');
+    console.error('Error creating invoice:', error.response?.data || error.message);
+    console.error('Full error details:', JSON.stringify(error.response?.data, null, 2));
+    
+    res.status(500).json({
+      error: 'Failed to create invoice',
+      details: error.response?.data || error.message,
+      fullError: error.response?.data || null
+    });
   }
 });
 
