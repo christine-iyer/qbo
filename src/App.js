@@ -4,6 +4,7 @@ import CreateInvoice from './components/CreateInvoice';
 import FetchCustomers from './components/FetchCustomers';
 import ManageInvoices from './components/ManageInvoices';
 import ItemsList from './components/ItemsList';
+import DeliveryReport from './components/DeliveryReport';
 import Nav from './components/Nav';
 function App(){
   return (
@@ -16,6 +17,7 @@ function App(){
       <Route path="/customers" element={<FetchCustomers />} />
       <Route path="/manage-invoices" element={<ManageInvoices />} />
       <Route path="/items" element={<ItemsList />} />
+      <Route path="/delivery-report" element={<DeliveryReport />} />
     </Routes>
     </div>
   );

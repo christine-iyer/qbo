@@ -18,6 +18,9 @@ export default function Nav(props) {
       <Link to="/items">
         <div>View Items</div>
       </Link>
+      <Link to="/delivery-report">
+        <div>Delivery Report</div>
+      </Link>
     </div>
   );
 }
