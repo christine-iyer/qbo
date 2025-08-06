@@ -56,7 +56,7 @@ const FetchCustomers = () => {
                 <small>ID: {customer.Id}</small>
                 {customer.CompanyName && <><br /><small>Company: {customer.CompanyName}</small></>}
                 {customer.PrimaryEmailAddr?.Address && (
-                  <><br /><small>Email: {customer.PrimaryEmailAddr.Address} City: {customer.ShipAddr?.City} State: {customer.ShipAddr?.CountrySubDivisionCode} Zip: {customer.ShipAddr?.PostalCode}</small></>
+                  <><br /><small>Address: {customer.ShipAddr?.Line1} {customer.ShipAddr?.City} {customer.ShipAddr?.CountrySubDivisionCode} {customer.ShipAddr?.PostalCode} Email: {customer.PrimaryEmailAddr.Address} </small></>
                 )}
                 {customer.BillAddr?.City && (
                   <><br /><small>Balance: {customer.Balance}</small></>

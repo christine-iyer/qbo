@@ -88,6 +88,17 @@ const DeliveryReport = () => {
                   firstDelivery: deliveryDate,
                   lastDelivery: deliveryDate,
                   customerName: invoice.CustomerName,
+                  ShipAddr: invoice.ShipAddr ? {
+                    Line1: invoice.ShipAddr.Line1 || '',
+                    City: invoice.ShipAddr.City || '',
+                    CountrySubDivisionCode: invoice.ShipAddr.CountrySubDivisionCode || '',
+                    PostalCode: invoice.ShipAddr.PostalCode || ''
+                  } : {
+                    Line1: '',
+                    City: '',
+                    CountrySubDivisionCode: '',
+                    PostalCode: ''
+                  },
                   customers: new Set([invoice.CustomerName]) // Track all customers
                 };
               }
@@ -125,7 +136,8 @@ const DeliveryReport = () => {
       // Convert to array and sort by total commission (highest first)
       const reportArray = Object.values(deliveryData).map(business => ({
         ...business,
-        customerName: business.customerName, // Most recent customer
+        customerName: business.customerName, 
+        ShipAddr: business.ShipAddr,
         customerCount: business.customers.size,
         allCustomers: Array.from(business.customers).join(', '),
         customers: undefined // Remove Set object for clean JSON
@@ -200,10 +212,11 @@ const DeliveryReport = () => {
       return;
     }
 
-    const csvHeaders = 'Business Name,Total Deliveries,Total Transaction Value,Total Commission,First Delivery,Last Delivery,Customer Name\n';
-    const csvData = deliveryReport.map(business => 
-      `"${business.businessName}",${business.totalDeliveries},$${business.totalTransactionValue.toFixed(2)},$${business.totalCommission.toFixed(2)},${business.firstDelivery},${business.lastDelivery},"${business.customerName}"`
-    ).join('\n');
+    const csvHeaders = 'Business Name,Delivery Address,Total Deliveries,Total Transaction Value,Total Commission,First Delivery,Last Delivery,Customer Name\n';
+    const csvData = deliveryReport.map(business => {
+      const addressLine = `${business.ShipAddr.Line1 || ''} ${business.ShipAddr.City || ''} ${business.ShipAddr.CountrySubDivisionCode || ''} ${business.ShipAddr.PostalCode || ''}`.trim();
+      return `"${business.businessName}","${addressLine}",${business.totalDeliveries},$${business.totalTransactionValue.toFixed(2)},$${business.totalCommission.toFixed(2)},${business.firstDelivery},${business.lastDelivery},"${business.customerName}"`;
+    }).join('\n');
 
     const csvContent = csvHeaders + csvData;
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -389,7 +402,8 @@ const DeliveryReport = () => {
             <thead>
               <tr style={{ backgroundColor: '#f8f9fa' }}>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>🏢 Business Name</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>👤 Customer</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>� Delivery Address</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>�👤 Customer</th>
                 <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>📦 Deliveries</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #dee2e6' }}>💰 Total Value</th>
                 <th style={{ padding: '12px', textAlign: 'right', borderBottom: '2px solid #dee2e6' }}>💵 Commission</th>
@@ -405,6 +419,23 @@ const DeliveryReport = () => {
                 }}>
                   <td style={{ padding: '12px', fontWeight: 'bold' }}>
                     {business.businessName}
+                  </td>
+                  <td style={{ padding: '12px', fontSize: '12px' }}>
+                    <div style={{ lineHeight: '1.3' }}>
+                      {business.ShipAddr.Line1 && (
+                        <div>{business.ShipAddr.Line1}</div>
+                      )}
+                      {(business.ShipAddr.City || business.ShipAddr.CountrySubDivisionCode || business.ShipAddr.PostalCode) && (
+                        <div>
+                          {business.ShipAddr.City}
+                          {business.ShipAddr.City && business.ShipAddr.CountrySubDivisionCode && ', '}
+                          {business.ShipAddr.CountrySubDivisionCode} {business.ShipAddr.PostalCode}
+                        </div>
+                      )}
+                      {!business.ShipAddr.Line1 && !business.ShipAddr.City && (
+                        <div style={{ color: '#999', fontStyle: 'italic' }}>Address not available</div>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: '12px' }}>
                     <div>
