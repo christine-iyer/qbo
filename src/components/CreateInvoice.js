@@ -58,21 +58,38 @@ const CreateInvoice = () => {
     }));
   };
 
+  // Helper function to update description with all current values
+  const updateDescription = (transValue, commRate, deliveryCustomerId) => {
+    const deliveryCustomer = customers.find(c => c.Id === deliveryCustomerId);
+    const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
+    
+    console.log('UpdateDescription called with:');
+    console.log('- transValue:', transValue);
+    console.log('- commRate:', commRate);
+    console.log('- deliveryCustomerId:', deliveryCustomerId);
+    console.log('- deliveryCustomer found:', deliveryCustomer);
+    console.log('- deliveryToName:', deliveryToName);
+    
+    const description = deliveryToName 
+      ? `Product Delivery Service - ${commRate}% Commission (Transaction Value: $${transValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
+      : `Product Delivery Service - ${commRate}% Commission (Transaction Value: $${transValue.toFixed(2)})`;
+    
+    console.log('- Generated description:', description);
+    return description;
+  };
+
   const handleDeliveryCustomerChange = (e) => {
     const selectedDeliveryCustomerId = e.target.value;
     setDeliveryToCustomer(selectedDeliveryCustomerId);
     
-    // Update description to include delivery recipient
-    const deliveryCustomer = customers.find(c => c.Id === selectedDeliveryCustomerId);
-    const deliveryToName = deliveryCustomer ? deliveryCustomer.Name : '';
+    // Update description with current values
+    const description = updateDescription(transactionValue, commissionRate, selectedDeliveryCustomerId);
     
     setInvoice((prevInvoice) => ({
       ...prevInvoice,
       Line: [{
         ...prevInvoice.Line[0],
-        Description: deliveryToName 
-          ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
-          : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${transactionValue.toFixed(2)})`
+        Description: description
       }]
     }));
   };
@@ -107,9 +124,8 @@ const CreateInvoice = () => {
     // Calculate commission automatically
     const commissionAmount = (value * commissionRate) / 100;
     
-    // Get delivery customer name for description
-    const deliveryCustomer = customers.find(c => c.Id === deliveryToCustomer);
-    const deliveryToName = deliveryCustomer ? deliveryCustomer.Name : '';
+    // Update description with current values
+    const description = updateDescription(value, commissionRate, deliveryToCustomer);
     
     setInvoice((prevInvoice) => ({
       ...prevInvoice,
@@ -120,9 +136,7 @@ const CreateInvoice = () => {
           ...prevInvoice.Line[0].SalesItemLineDetail,
           UnitPrice: commissionAmount
         },
-        Description: deliveryToName 
-          ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${value.toFixed(2)}) - Delivering to: ${deliveryToName}`
-          : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${value.toFixed(2)})`
+        Description: description
       }]
     }));
   };
@@ -134,9 +148,8 @@ const CreateInvoice = () => {
     // Recalculate commission with new rate
     const commissionAmount = (transactionValue * rate) / 100;
     
-    // Get delivery customer name for description
-    const deliveryCustomer = customers.find(c => c.Id === deliveryToCustomer);
-    const deliveryToName = deliveryCustomer ? deliveryCustomer.Name : '';
+    // Update description with current values
+    const description = updateDescription(transactionValue, rate, deliveryToCustomer);
     
     setInvoice((prevInvoice) => ({
       ...prevInvoice,
@@ -147,9 +160,7 @@ const CreateInvoice = () => {
           ...prevInvoice.Line[0].SalesItemLineDetail,
           UnitPrice: commissionAmount
         },
-        Description: deliveryToName 
-          ? `Product Delivery Service - ${rate}% Commission (Transaction Value: $${transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
-          : `Product Delivery Service - ${rate}% Commission (Transaction Value: $${transactionValue.toFixed(2)})`
+        Description: description
       }]
     }));
   };
@@ -170,9 +181,41 @@ const CreateInvoice = () => {
     setLoading(true);
     setMessage('');
     
+    // Validate that delivery recipient is selected
+    if (!deliveryToCustomer) {
+      setMessage('Please select a delivery recipient before creating the invoice.');
+      setMessageType('error');
+      setLoading(false);
+      return;
+    }
+    
+    // Validate that transaction value is greater than 0
+    if (transactionValue <= 0) {
+      setMessage('Please enter a transaction value greater than $0.');
+      setMessageType('error');
+      setLoading(false);
+      return;
+    }
+    
     try {
-      console.log('Sending invoice data:', invoice);
-      const response = await axios.post('http://localhost:3001/create-invoice', invoice);
+      // Ensure the description is up-to-date with delivery recipient
+      const finalDescription = updateDescription(transactionValue, commissionRate, deliveryToCustomer);
+      
+      // Create final invoice object with updated description
+      const finalInvoice = {
+        ...invoice,
+        Line: [{
+          ...invoice.Line[0],
+          Description: finalDescription
+        }]
+      };
+      
+      console.log('Sending invoice data:', finalInvoice);
+      console.log('Delivery recipient ID:', deliveryToCustomer);
+      console.log('Transaction value:', transactionValue);
+      console.log('Final Invoice Description:', finalDescription);
+      
+      const response = await axios.post('http://localhost:3001/create-invoice', finalInvoice);
       console.log('Invoice created successfully', response.data);
       setMessage(`Invoice created successfully! Invoice ID: ${response.data.QueryResponse?.Invoice?.[0]?.Id || 'N/A'}`);
       setMessageType('success');
@@ -237,7 +280,7 @@ const CreateInvoice = () => {
             <option value="">-- Select a Customer --</option>
             {customers.map(customer => (
               <option key={customer.Id} value={customer.Id}>
-                {customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
+                {customer.DisplayName || customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
               </option>
             ))}
           </select>
@@ -272,7 +315,7 @@ const CreateInvoice = () => {
               .filter(customer => customer.Id !== invoice.CustomerRef.value) // Exclude the customer being invoiced
               .map(customer => (
                 <option key={customer.Id} value={customer.Id}>
-                  {customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
+                  {customer.DisplayName || customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
                 </option>
               ))
             }
@@ -340,7 +383,7 @@ const CreateInvoice = () => {
             <div><strong>Transaction Value:</strong> ${transactionValue.toFixed(2)}</div>
             <div><strong>Commission Rate:</strong> {commissionRate}%</div>
             {deliveryToCustomer && (
-              <div><strong>Delivering To:</strong> {customers.find(c => c.Id === deliveryToCustomer)?.Name || 'Unknown'}</div>
+              <div><strong>Delivering To:</strong> {customers.find(c => c.Id === deliveryToCustomer)?.DisplayName || customers.find(c => c.Id === deliveryToCustomer)?.Name || 'Unknown'}</div>
             )}
             <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#28a745', marginTop: '8px' }}>
               <strong>Your Commission:</strong> ${invoice.Line[0].Amount.toFixed(2)}

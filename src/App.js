@@ -2,6 +2,8 @@ import { Route, Routes } from 'react-router-dom';
 import QuickBooksAuth from './components/QuickBooksAuth';
 import CreateInvoice from './components/CreateInvoice';
 import FetchCustomers from './components/FetchCustomers';
+import ManageInvoices from './components/ManageInvoices';
+import ItemsList from './components/ItemsList';
 import Nav from './components/Nav';
 function App(){
   return (
@@ -12,6 +14,8 @@ function App(){
       <Route path="/" element={<QuickBooksAuth />} />
       <Route path="/create-invoice" element={<CreateInvoice />} />
       <Route path="/customers" element={<FetchCustomers />} />
+      <Route path="/manage-invoices" element={<ManageInvoices />} />
+      <Route path="/items" element={<ItemsList />} />
     </Routes>
     </div>
   );

@@ -12,6 +12,12 @@ export default function Nav(props) {
       <Link to="/customers">
         <div>View Customers</div>
       </Link>
+      <Link to="/manage-invoices">
+        <div>Manage Invoices</div>
+      </Link>
+      <Link to="/items">
+        <div>View Items</div>
+      </Link>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
-const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -109,12 +108,61 @@ app.get('/customers', async (req, res) => {
   }
 });
 
+// New endpoint to fetch items/products from QuickBooks
+app.get('/items', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  
+  console.log('Fetching items for company:', companyId);
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  try {
+    // Query to get all items
+    const response = await axios.get(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/query?query=SELECT * FROM Item`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    console.log('Fetched items successfully');
+    const items = response.data.QueryResponse?.Item || [];
+    console.log('Items fetched successfully. Count:', items.length);
+    if (items.length > 0) {
+      console.log('Sample item structure:', JSON.stringify(items[0], null, 2));
+    }
+
+    res.json({
+      success: true,
+      items,
+      count: items.length,
+      sampleStructure: items[0] || null
+    });
+  } catch (error) {
+    console.error('Error fetching items:', error.response?.data || error.message);
+    console.error('Full error details:', JSON.stringify(error.response?.data, null, 2));
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch items',
+      details: error.response?.data || error.message,
+      fullError: error.response?.data || null
+    });
+  }
+});
+
 app.post('/create-invoice', async (req, res) => {
   const invoice = req.body;
   const companyId = process.env.COMPANY_ID;
   
   console.log('Creating invoice for company:', companyId);
   console.log('Invoice data received:', JSON.stringify(invoice, null, 2));
+  console.log('Invoice line description:', invoice.Line?.[0]?.Description);
+  console.log('Does description include delivery info?', invoice.Line?.[0]?.Description?.includes('Delivering to:'));
   
   if (!accessToken) {
     return res.status(401).json({ error: 'Not authenticated. Please connect to QuickBooks first.' });
@@ -131,30 +179,8 @@ app.post('/create-invoice', async (req, res) => {
     const invoiceData = response.data;
     console.log('Invoice created successfully:', JSON.stringify(invoiceData, null, 2));
 
-    // Send email with the invoice (optional - can be disabled for testing)
-    try {
-      const transporter = nodemailer.createTransporter({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: invoice.BillEmail.Address,
-        subject: 'Your Invoice from [Your Company]',
-        text: `Please find attached your invoice.`,
-        html: `<p>Please find attached your invoice.</p><p>Invoice ID: ${invoiceData.QueryResponse?.Invoice?.[0]?.Id || 'N/A'}</p>`,
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log('Email sent successfully to:', invoice.BillEmail.Address);
-    } catch (emailError) {
-      console.error('Email sending failed (but invoice was created):', emailError.message);
-      // Don't fail the whole request if email fails
-    }
+    // Email functionality disabled
+    console.log('Email sending is disabled. Invoice created without email notification.');
 
     res.json(invoiceData);
   } catch (error) {
@@ -165,6 +191,79 @@ app.post('/create-invoice', async (req, res) => {
       error: 'Failed to create invoice',
       details: error.response?.data || error.message,
       fullError: error.response?.data || null
+    });
+  }
+});
+
+// New endpoint to fetch invoices from QuickBooks
+app.get('/invoices', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please connect to QuickBooks first.' });
+  }
+  
+  try {
+    // Query to get all invoices
+    const query = "SELECT * FROM Invoice ORDER BY TxnDate DESC MAXRESULTS 50";
+    const response = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/query?query=${encodeURIComponent(query)}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    console.log('Fetched invoices successfully');
+    const invoices = response.data.QueryResponse?.Invoice || [];
+    console.log('Number of invoices found:', invoices.length);
+    
+    // Log first invoice for debugging
+    if (invoices.length > 0) {
+      console.log('First invoice sample:', JSON.stringify(invoices[0], null, 2));
+    }
+    
+    // Also fetch customer data to enrich invoice information
+    const customerResponse = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/query?query=${encodeURIComponent("SELECT * FROM Customer")}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      },
+    });
+    
+    const customers = customerResponse.data.QueryResponse?.Customer || [];
+    console.log('Number of customers found:', customers.length);
+    
+    const customerMap = {};
+    customers.forEach(customer => {
+      customerMap[customer.Id] = customer;
+      console.log(`Customer mapping: ID=${customer.Id} -> Name=${customer.DisplayName || customer.Name}`);
+    });
+    
+    // Enrich invoice data with customer names
+    const enrichedInvoices = invoices.map(invoice => {
+      const customerName = customerMap[invoice.CustomerRef?.value]?.DisplayName || 
+                          customerMap[invoice.CustomerRef?.value]?.Name || 
+                          'Unknown Customer';
+      console.log(`Invoice ${invoice.DocNumber}: CustomerRef=${invoice.CustomerRef?.value}, CustomerName=${customerName}`);
+      if (invoice.Line?.[0]?.Description) {
+        console.log(`Invoice ${invoice.DocNumber} description:`, invoice.Line[0].Description);
+      }
+      
+      return {
+        ...invoice,
+        CustomerName: customerName
+      };
+    });
+    
+    res.json({ 
+      invoices: enrichedInvoices,
+      total: enrichedInvoices.length 
+    });
+  } catch (error) {
+    console.error('Error fetching invoices:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to fetch invoices',
+      details: error.response?.data || error.message
     });
   }
 });
