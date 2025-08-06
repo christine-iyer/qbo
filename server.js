@@ -155,6 +155,45 @@ app.get('/items', async (req, res) => {
   }
 });
 
+// New endpoint to create items in QuickBooks
+app.post('/create-item', async (req, res) => {
+  const itemData = req.body;
+  const companyId = process.env.COMPANY_ID;
+  
+  console.log('Creating item for company:', companyId);
+  console.log('Item data received:', JSON.stringify(itemData, null, 2));
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  try {
+    const response = await axios.post(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/item`,
+      itemData,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('Item created successfully');
+    res.json({
+      success: true,
+      data: response.data
+    });
+  } catch (error) {
+    console.error('Error creating item:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to create item',
+      details: error.response?.data || error.message 
+    });
+  }
+});
+
 app.post('/create-invoice', async (req, res) => {
   const invoice = req.body;
   const companyId = process.env.COMPANY_ID;
