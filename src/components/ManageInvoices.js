@@ -8,6 +8,8 @@ const ManageInvoices = () => {
   const [messageType, setMessageType] = useState('');
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [editAmount, setEditAmount] = useState('');
+  const [editingLineItem, setEditingLineItem] = useState(null); // Format: "invoiceId-lineIndex"
+  const [editLineItemData, setEditLineItemData] = useState({}); // Store editing data for line items
 
   useEffect(() => {
     fetchInvoices();
@@ -27,6 +29,11 @@ const ManageInvoices = () => {
   const extractDeliveryRecipient = (description) => {
     const match = description.match(/Delivering to: (.+)$/);
     return match ? match[1].trim() : 'Not specified';
+  };
+
+  const extractDeliveryDate = (description) => {
+    const match = description.match(/Delivered on: (\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : '';
   };
 
   const isDeliveryService = (description) => {
@@ -57,7 +64,8 @@ const ManageInvoices = () => {
           quantity: line.SalesItemLineDetail?.Qty || 1,
           transactionValue: extractTransactionValue(description),
           commissionRate: extractCommissionRate(description),
-          deliveryRecipient: extractDeliveryRecipient(description)
+          deliveryRecipient: extractDeliveryRecipient(description),
+          deliveryDate: extractDeliveryDate(description)
         });
       } else if (isProductSale(description)) {
         productItems.push({
@@ -151,6 +159,66 @@ const ManageInvoices = () => {
   const handleCancelEdit = () => {
     setEditingInvoice(null);
     setEditAmount('');
+  };
+
+  // Line item editing functions
+  const handleEditLineItem = (invoiceId, lineIndex, item) => {
+    const editKey = `${invoiceId}-${lineIndex}`;
+    setEditingLineItem(editKey);
+    setEditLineItemData({
+      ...item,
+      invoiceId,
+      lineIndex
+    });
+  };
+
+  const handleSaveLineItem = async (invoiceId, lineIndex) => {
+    try {
+      // In a real implementation, you would update the specific line item in QuickBooks
+      console.log(`Updating line item ${lineIndex} in invoice ${invoiceId}`, editLineItemData);
+      
+      // For now, just update locally
+      setInvoices(invoices.map(invoice => {
+        if (invoice.Id === invoiceId && invoice.Line && invoice.Line[lineIndex]) {
+          const updatedLine = { ...invoice.Line[lineIndex] };
+          
+          // Update based on item type
+          if (editLineItemData.transactionValue !== undefined) {
+            // Delivery service update
+            const commissionRate = editLineItemData.commissionRate || 10;
+            updatedLine.Amount = (editLineItemData.transactionValue * commissionRate) / 100;
+            updatedLine.Description = `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${editLineItemData.transactionValue.toFixed(2)}) - Delivered on: ${editLineItemData.deliveryDate || ''} - Delivering to: ${editLineItemData.deliveryRecipient || 'Not specified'}`;
+          } else {
+            // Product sale update
+            updatedLine.Amount = editLineItemData.amount;
+            updatedLine.SalesItemLineDetail.Qty = editLineItemData.quantity;
+            updatedLine.SalesItemLineDetail.UnitPrice = editLineItemData.unitPrice;
+          }
+          
+          const updatedInvoice = { ...invoice };
+          updatedInvoice.Line[lineIndex] = updatedLine;
+          
+          // Recalculate total
+          updatedInvoice.TotalAmt = updatedInvoice.Line.reduce((total, line) => total + (line.Amount || 0), 0);
+          
+          return updatedInvoice;
+        }
+        return invoice;
+      }));
+      
+      setEditingLineItem(null);
+      setEditLineItemData({});
+      setMessage('Line item updated successfully (local only - QuickBooks update not implemented)');
+      setMessageType('success');
+    } catch (error) {
+      setMessage('Failed to update line item');
+      setMessageType('error');
+    }
+  };
+
+  const handleCancelLineItemEdit = () => {
+    setEditingLineItem(null);
+    setEditLineItemData({});
   };
 
   const handleDelete = async (invoiceId) => {
@@ -336,23 +404,126 @@ const ManageInvoices = () => {
                         <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#28a745', marginBottom: '4px' }}>
                           🚚 Delivery Services:
                         </div>
-                        {lineItems.deliveryItems.map((item, idx) => (
-                          <div key={idx} style={{ 
-                            fontSize: '11px', 
-                            paddingLeft: '10px', 
-                            marginBottom: '2px',
-                            borderLeft: '2px solid #28a745',
-                            paddingBottom: '2px'
-                          }}>
-                            <div>
-                              <strong>${item.transactionValue.toFixed(2)}</strong> transaction 
-                              @ {item.commissionRate}% = <strong>${item.amount.toFixed(2)}</strong>
+                        {lineItems.deliveryItems.map((item, idx) => {
+                          const editKey = `${invoice.Id}-${item.index - 1}`;
+                          const isEditing = editingLineItem === editKey;
+                          
+                          return (
+                            <div key={idx} style={{ 
+                              fontSize: '11px', 
+                              paddingLeft: '10px', 
+                              marginBottom: '6px',
+                              borderLeft: '2px solid #28a745',
+                              paddingBottom: '4px',
+                              backgroundColor: isEditing ? '#f0f8f0' : 'transparent',
+                              padding: isEditing ? '8px' : '2px 0 2px 10px',
+                              borderRadius: isEditing ? '4px' : '0'
+                            }}>
+                              {isEditing ? (
+                                <div style={{ fontSize: '12px' }}>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Transaction Value ($):</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={editLineItemData.transactionValue || 0}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        transactionValue: parseFloat(e.target.value) || 0,
+                                        commissionRate: parseFloat(e.target.value) < 50 ? 15 : parseFloat(e.target.value) < 100 ? 12 : 10
+                                      })}
+                                      style={{ width: '80px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Delivery Date:</label>
+                                    <input
+                                      type="date"
+                                      value={editLineItemData.deliveryDate || ''}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        deliveryDate: e.target.value
+                                      })}
+                                      style={{ width: '120px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Delivery Recipient:</label>
+                                    <input
+                                      type="text"
+                                      value={editLineItemData.deliveryRecipient || ''}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        deliveryRecipient: e.target.value
+                                      })}
+                                      style={{ width: '150px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginTop: '6px' }}>
+                                    <button
+                                      onClick={() => handleSaveLineItem(invoice.Id, item.index - 1)}
+                                      style={{
+                                        backgroundColor: '#28a745',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 6px',
+                                        borderRadius: '2px',
+                                        fontSize: '10px',
+                                        marginRight: '4px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelLineItemEdit}
+                                      style={{
+                                        backgroundColor: '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 6px',
+                                        borderRadius: '2px',
+                                        fontSize: '10px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                      <div>
+                                        <strong>${item.transactionValue.toFixed(2)}</strong> transaction 
+                                        @ {item.commissionRate}% = <strong>${item.amount.toFixed(2)}</strong>
+                                      </div>
+                                      <div style={{ color: '#666' }}>
+                                        {item.deliveryDate && <span>📅 {item.deliveryDate} | </span>}
+                                        To: {item.deliveryRecipient}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
+                                      style={{
+                                        backgroundColor: '#007bff',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 4px',
+                                        borderRadius: '2px',
+                                        fontSize: '9px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div style={{ color: '#666' }}>
-                              To: {item.deliveryRecipient}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                     
@@ -362,22 +533,126 @@ const ManageInvoices = () => {
                         <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#007bff', marginBottom: '4px' }}>
                           📦 Product Sales:
                         </div>
-                        {lineItems.productItems.map((item, idx) => (
-                          <div key={idx} style={{ 
-                            fontSize: '11px', 
-                            paddingLeft: '10px', 
-                            marginBottom: '2px',
-                            borderLeft: '2px solid #007bff',
-                            paddingBottom: '2px'
-                          }}>
-                            <div>
-                              {item.quantity}x <strong>${item.unitPrice.toFixed(2)}</strong> = <strong>${item.amount.toFixed(2)}</strong>
+                        {lineItems.productItems.map((item, idx) => {
+                          const editKey = `${invoice.Id}-${item.index - 1}`;
+                          const isEditing = editingLineItem === editKey;
+                          
+                          return (
+                            <div key={idx} style={{ 
+                              fontSize: '11px', 
+                              paddingLeft: '10px', 
+                              marginBottom: '6px',
+                              borderLeft: '2px solid #007bff',
+                              paddingBottom: '4px',
+                              backgroundColor: isEditing ? '#f0f4f8' : 'transparent',
+                              padding: isEditing ? '8px' : '2px 0 2px 10px',
+                              borderRadius: isEditing ? '4px' : '0'
+                            }}>
+                              {isEditing ? (
+                                <div style={{ fontSize: '12px' }}>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Quantity:</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={editLineItemData.quantity || 1}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        quantity: parseInt(e.target.value) || 1,
+                                        amount: (editLineItemData.unitPrice || 0) * (parseInt(e.target.value) || 1)
+                                      })}
+                                      style={{ width: '60px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Unit Price ($):</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={editLineItemData.unitPrice || 0}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        unitPrice: parseFloat(e.target.value) || 0,
+                                        amount: (parseFloat(e.target.value) || 0) * (editLineItemData.quantity || 1)
+                                      })}
+                                      style={{ width: '80px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Description:</label>
+                                    <input
+                                      type="text"
+                                      value={editLineItemData.description || ''}
+                                      onChange={(e) => setEditLineItemData({
+                                        ...editLineItemData,
+                                        description: e.target.value
+                                      })}
+                                      style={{ width: '200px', padding: '2px', fontSize: '11px' }}
+                                    />
+                                  </div>
+                                  <div style={{ marginTop: '6px' }}>
+                                    <button
+                                      onClick={() => handleSaveLineItem(invoice.Id, item.index - 1)}
+                                      style={{
+                                        backgroundColor: '#28a745',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 6px',
+                                        borderRadius: '2px',
+                                        fontSize: '10px',
+                                        marginRight: '4px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelLineItemEdit}
+                                      style={{
+                                        backgroundColor: '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 6px',
+                                        borderRadius: '2px',
+                                        fontSize: '10px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                      <div>
+                                        {item.quantity}x <strong>${item.unitPrice.toFixed(2)}</strong> = <strong>${item.amount.toFixed(2)}</strong>
+                                      </div>
+                                      <div style={{ color: '#666', fontSize: '10px' }}>
+                                        {item.description.substring(0, 50)}{item.description.length > 50 ? '...' : ''}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
+                                      style={{
+                                        backgroundColor: '#007bff',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '2px 4px',
+                                        borderRadius: '2px',
+                                        fontSize: '9px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div style={{ color: '#666', fontSize: '10px' }}>
-                              {item.description.substring(0, 50)}{item.description.length > 50 ? '...' : ''}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </td>
