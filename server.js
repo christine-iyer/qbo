@@ -307,6 +307,84 @@ app.get('/invoices', async (req, res) => {
   }
 });
 
+// Update invoice line item
+app.put('/api/update-invoice-line', async (req, res) => {
+  try {
+    const { invoiceNumber, lineDescription, amount } = req.body;
+    
+    if (!invoiceNumber || !lineDescription || amount === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: invoiceNumber, lineDescription, amount' 
+      });
+    }
+    
+    // First, find the invoice by document number
+    const invoicesResponse = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/query?query=SELECT * FROM Invoice WHERE DocNumber = '${invoiceNumber}'`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!invoicesResponse.data.QueryResponse?.Invoice?.[0]) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    
+    const invoice = invoicesResponse.data.QueryResponse.Invoice[0];
+    
+    // Find the line item to update (assuming first delivery service line)
+    let lineToUpdate = null;
+    let lineIndex = -1;
+    
+    for (let i = 0; i < invoice.Line.length; i++) {
+      const line = invoice.Line[i];
+      if (line.Description && line.Description.includes('Product Delivery Service')) {
+        lineToUpdate = line;
+        lineIndex = i;
+        break;
+      }
+    }
+    
+    if (!lineToUpdate) {
+      return res.status(404).json({ error: 'Delivery service line not found in invoice' });
+    }
+    
+    // Update the line item
+    invoice.Line[lineIndex].Description = lineDescription;
+    invoice.Line[lineIndex].Amount = parseFloat(amount);
+    invoice.Line[lineIndex].SalesItemLineDetail.UnitPrice = parseFloat(amount);
+    
+    // Update the invoice via QuickBooks API
+    const updateResponse = await axios.post(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice`, invoice, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('QuickBooks update response:', JSON.stringify(updateResponse.data, null, 2));
+    
+    if (updateResponse.data.QueryResponse?.Invoice?.[0] || updateResponse.data.Invoice) {
+      const updatedInvoice = updateResponse.data.QueryResponse?.Invoice?.[0] || updateResponse.data.Invoice;
+      res.json({ 
+        success: true, 
+        invoice: updatedInvoice,
+        message: 'Invoice line updated successfully'
+      });
+    } else {
+      throw new Error('Unexpected response format from QuickBooks: ' + JSON.stringify(updateResponse.data));
+    }
+    
+  } catch (error) {
+    console.error('Error updating invoice line:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to update invoice line',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(3001, () => {
   console.log('Server running on port 3001');
 });

@@ -9,14 +9,33 @@ const DeliveryReport = () => {
   
   // Date filter state
   const [startDate, setStartDate] = useState(() => {
-    // Default to 30 days ago
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
     // Default to today
     return new Date().toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    // Default to the upcoming Friday
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    
+    // Calculate days until next Friday (5)
+    let daysUntilFriday;
+    if (currentDay <= 5) {
+      // If it's Sunday through Friday, get the next Friday
+      daysUntilFriday = 5 - currentDay;
+    } else {
+      // If it's Saturday, get Friday of next week
+      daysUntilFriday = 6; // Saturday to Friday is 6 days
+    }
+    
+    // If today is Friday, get next Friday
+    if (daysUntilFriday === 0) {
+      daysUntilFriday = 7;
+    }
+    
+    const upcomingFriday = new Date(today);
+    upcomingFriday.setDate(today.getDate() + daysUntilFriday);
+    
+    return upcomingFriday.toISOString().split('T')[0];
   });
   
   // Report data
@@ -24,6 +43,10 @@ const DeliveryReport = () => {
   const [totalDeliveries, setTotalDeliveries] = useState(0);
   const [totalCommission, setTotalCommission] = useState(0);
   const [uniqueBusinesses, setUniqueBusinesses] = useState(0);
+  
+  // Editing state for delivery transactions
+  const [editingDelivery, setEditingDelivery] = useState(null);
+  const [editDeliveryData, setEditDeliveryData] = useState({});
 
   useEffect(() => {
     fetchInvoices();
@@ -64,9 +87,13 @@ const DeliveryReport = () => {
                   totalCommission: 0,
                   firstDelivery: deliveryDate,
                   lastDelivery: deliveryDate,
-                  customerName: invoice.CustomerName
+                  customerName: invoice.CustomerName,
+                  customers: new Set([invoice.CustomerName]) // Track all customers
                 };
               }
+              
+              // Update customer information
+              deliveryData[recipient].customers.add(invoice.CustomerName);
               
               deliveryData[recipient].deliveries.push({
                 date: deliveryDate,
@@ -87,6 +114,8 @@ const DeliveryReport = () => {
               }
               if (deliveryDate > deliveryData[recipient].lastDelivery) {
                 deliveryData[recipient].lastDelivery = deliveryDate;
+                // Update customer name to the most recent delivery's customer
+                deliveryData[recipient].customerName = invoice.CustomerName;
               }
             }
           }
@@ -94,7 +123,13 @@ const DeliveryReport = () => {
       });
 
       // Convert to array and sort by total commission (highest first)
-      const reportArray = Object.values(deliveryData).sort((a, b) => b.totalCommission - a.totalCommission);
+      const reportArray = Object.values(deliveryData).map(business => ({
+        ...business,
+        customerName: business.customerName, // Most recent customer
+        customerCount: business.customers.size,
+        allCustomers: Array.from(business.customers).join(', '),
+        customers: undefined // Remove Set object for clean JSON
+      })).sort((a, b) => b.totalCommission - a.totalCommission);
       
       setDeliveryReport(reportArray);
       setTotalDeliveries(totalDeliveryCount);
@@ -189,7 +224,7 @@ const DeliveryReport = () => {
     <div style={{ padding: '20px', maxWidth: '1400px' }}>
       <h1>Delivery Report</h1>
       <p style={{ color: '#666', marginBottom: '20px' }}>
-        Track businesses delivered to and analyze your delivery performance by date range.
+        Track businesses delivered to and analyze your delivery performance. Default range shows today through the upcoming Friday to help plan your delivery route.
       </p>
 
       {message && (
@@ -372,7 +407,14 @@ const DeliveryReport = () => {
                     {business.businessName}
                   </td>
                   <td style={{ padding: '12px' }}>
-                    {business.customerName}
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{business.customerName}</div>
+                      {business.customerCount > 1 && (
+                        <div style={{ fontSize: '11px', color: '#666' }}>
+                          + {business.customerCount - 1} other customer{business.customerCount > 2 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <span style={{
@@ -426,6 +468,7 @@ const DeliveryReport = () => {
                             <div><strong>📅 {delivery.date}</strong></div>
                             <div>💰 ${delivery.transactionValue.toFixed(2)} @ {delivery.commissionRate}% = ${delivery.commissionAmount.toFixed(2)}</div>
                             <div style={{ color: '#666' }}>📄 Invoice: {delivery.invoiceNumber}</div>
+                            <div style={{ color: '#666', fontSize: '10px' }}>👤 Customer: {delivery.customerName}</div>
                           </div>
                         ))}
                       </div>
