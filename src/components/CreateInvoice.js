@@ -32,6 +32,7 @@ const CreateInvoice = () => {
       type: 'delivery', // 'delivery' or 'product'
       transactionValue: 0,
       deliveryToCustomer: '',
+      deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
       selectedItem: '',
       quantity: 1,
       amount: 0,
@@ -54,6 +55,7 @@ const CreateInvoice = () => {
       type: 'delivery',
       transactionValue: 0,
       deliveryToCustomer: '',
+      deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
       selectedItem: '',
       quantity: 1,
       amount: 0,
@@ -92,8 +94,8 @@ const CreateInvoice = () => {
         const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
         
         description = deliveryToName 
-          ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
-          : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)})`;
+          ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivered on: ${item.deliveryDate} - Delivering to: ${deliveryToName}`
+          : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivered on: ${item.deliveryDate}`;
       } else if (item.type === 'product' && item.selectedItem) {
         const selectedItemData = items.find(i => i.Id === item.selectedItem);
         if (selectedItemData) {
@@ -218,8 +220,8 @@ const CreateInvoice = () => {
           const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
           
           description = deliveryToName 
-            ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
-            : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)})`;
+            ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivered on: ${item.deliveryDate} - Delivering to: ${deliveryToName}`
+            : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivered on: ${item.deliveryDate}`;
         } else {
           const selectedItemData = items.find(i => i.Id === item.selectedItem);
           if (selectedItemData) {
@@ -261,6 +263,7 @@ const CreateInvoice = () => {
         type: 'delivery',
         transactionValue: 0,
         deliveryToCustomer: '',
+        deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
         selectedItem: '',
         quantity: 1,
         amount: 0,
@@ -401,6 +404,7 @@ const CreateInvoice = () => {
                     type: e.target.value,
                     transactionValue: 0,
                     deliveryToCustomer: '',
+                    deliveryDate: e.target.value === 'delivery' ? new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : '',
                     selectedItem: '',
                     quantity: 1,
                     amount: 0
@@ -438,13 +442,30 @@ const CreateInvoice = () => {
 
                   <div style={{ marginBottom: '10px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                      Delivery Date:
+                    </label>
+                    <input
+                      type="date"
+                      value={lineItem.deliveryDate}
+                      onChange={(e) => updateLineItem(lineItem.id, { deliveryDate: e.target.value })}
+                      required
+                      style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                    />
+                    <small style={{ color: '#666' }}>
+                      When was this delivery completed? (Defaults to 3 days ago for typical billing cycle)
+                    </small>
+                  </div>
+
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
                       Transaction Value ($):
                     </label>
                     <input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={lineItem.transactionValue}
+                      value={lineItem.transactionValue === 0 ? '' : lineItem.transactionValue}
+                      placeholder="Enter transaction value"
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         const commissionRate = calculateCommissionRate(value);
