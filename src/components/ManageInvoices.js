@@ -29,6 +29,54 @@ const ManageInvoices = () => {
     return match ? match[1].trim() : 'Not specified';
   };
 
+  const isDeliveryService = (description) => {
+    return description && description.includes('Product Delivery Service');
+  };
+
+  const isProductSale = (description) => {
+    return description && !description.includes('Product Delivery Service') && description.length > 0;
+  };
+
+  // Function to analyze and categorize line items
+  const analyzeLineItems = (invoice) => {
+    if (!invoice.Line || !Array.isArray(invoice.Line)) {
+      return { deliveryItems: [], productItems: [], totalItems: 0 };
+    }
+
+    const deliveryItems = [];
+    const productItems = [];
+
+    invoice.Line.forEach((line, index) => {
+      const description = line.Description || '';
+      
+      if (isDeliveryService(description)) {
+        deliveryItems.push({
+          index: index + 1,
+          description,
+          amount: line.Amount || 0,
+          quantity: line.SalesItemLineDetail?.Qty || 1,
+          transactionValue: extractTransactionValue(description),
+          commissionRate: extractCommissionRate(description),
+          deliveryRecipient: extractDeliveryRecipient(description)
+        });
+      } else if (isProductSale(description)) {
+        productItems.push({
+          index: index + 1,
+          description,
+          amount: line.Amount || 0,
+          quantity: line.SalesItemLineDetail?.Qty || 1,
+          unitPrice: line.SalesItemLineDetail?.UnitPrice || 0
+        });
+      }
+    });
+
+    return {
+      deliveryItems,
+      productItems,
+      totalItems: deliveryItems.length + productItems.length
+    };
+  };
+
   // Fetch real invoices from QuickBooks API
   const fetchInvoices = async () => {
     setLoading(true);
@@ -40,10 +88,14 @@ const ManageInvoices = () => {
       
       // Debug: log descriptions to see what we're parsing
       invoices.forEach((invoice, index) => {
-        console.log(`Invoice ${index + 1} description:`, invoice.Line?.[0]?.Description);
-        console.log(`Invoice ${index + 1} customer name:`, invoice.CustomerName);
-        const deliveryRecipient = extractDeliveryRecipient(invoice.Line?.[0]?.Description || '');
-        console.log(`Extracted delivery recipient:`, deliveryRecipient);
+        const lineItems = analyzeLineItems(invoice);
+        console.log(`Invoice ${index + 1}:`, {
+          docNumber: invoice.DocNumber,
+          totalLineItems: lineItems.totalItems,
+          deliveryItems: lineItems.deliveryItems.length,
+          productItems: lineItems.productItems.length,
+          customerName: invoice.CustomerName
+        });
       });
       
       setInvoices(invoices);
@@ -207,14 +259,16 @@ const ManageInvoices = () => {
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Invoice #</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Customer</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Date</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Amount</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Total Amount</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Status</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Delivery Details</th>
+                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Line Items</th>
                 <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice, index) => (
+              {invoices.map((invoice, index) => {
+                const lineItems = analyzeLineItems(invoice);
+                return (
                 <tr key={invoice.Id} style={{ 
                   backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
                   borderBottom: '1px solid #dee2e6'
@@ -261,16 +315,71 @@ const ManageInvoices = () => {
                       {getStatusText(invoice.EmailStatus, invoice.Balance)}
                     </span>
                   </td>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>
-                    <div>
-                      <strong>Transaction:</strong> ${extractTransactionValue(invoice.Line?.[0]?.Description || '').toFixed(2)}
+                  <td style={{ padding: '12px', fontSize: '14px', maxWidth: '300px' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <strong>Total Items:</strong> {lineItems.totalItems}
+                      {lineItems.deliveryItems.length > 0 && (
+                        <span style={{ color: '#28a745', marginLeft: '5px' }}>
+                          ({lineItems.deliveryItems.length} delivery)
+                        </span>
+                      )}
+                      {lineItems.productItems.length > 0 && (
+                        <span style={{ color: '#007bff', marginLeft: '5px' }}>
+                          ({lineItems.productItems.length} product)
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <strong>Commission:</strong> {extractCommissionRate(invoice.Line?.[0]?.Description || '')}%
-                    </div>
-                    <div>
-                      <strong>Delivering to:</strong> {extractDeliveryRecipient(invoice.Line?.[0]?.Description || '')}
-                    </div>
+                    
+                    {/* Delivery Services */}
+                    {lineItems.deliveryItems.length > 0 && (
+                      <div style={{ marginBottom: '6px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#28a745', marginBottom: '4px' }}>
+                          🚚 Delivery Services:
+                        </div>
+                        {lineItems.deliveryItems.map((item, idx) => (
+                          <div key={idx} style={{ 
+                            fontSize: '11px', 
+                            paddingLeft: '10px', 
+                            marginBottom: '2px',
+                            borderLeft: '2px solid #28a745',
+                            paddingBottom: '2px'
+                          }}>
+                            <div>
+                              <strong>${item.transactionValue.toFixed(2)}</strong> transaction 
+                              @ {item.commissionRate}% = <strong>${item.amount.toFixed(2)}</strong>
+                            </div>
+                            <div style={{ color: '#666' }}>
+                              To: {item.deliveryRecipient}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Product Sales */}
+                    {lineItems.productItems.length > 0 && (
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#007bff', marginBottom: '4px' }}>
+                          📦 Product Sales:
+                        </div>
+                        {lineItems.productItems.map((item, idx) => (
+                          <div key={idx} style={{ 
+                            fontSize: '11px', 
+                            paddingLeft: '10px', 
+                            marginBottom: '2px',
+                            borderLeft: '2px solid #007bff',
+                            paddingBottom: '2px'
+                          }}>
+                            <div>
+                              {item.quantity}x <strong>${item.unitPrice.toFixed(2)}</strong> = <strong>${item.amount.toFixed(2)}</strong>
+                            </div>
+                            <div style={{ color: '#666', fontSize: '10px' }}>
+                              {item.description.substring(0, 50)}{item.description.length > 50 ? '...' : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '12px' }}>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -340,7 +449,8 @@ const ManageInvoices = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

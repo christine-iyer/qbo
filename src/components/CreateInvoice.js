@@ -8,9 +8,6 @@ const CreateInvoice = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
   
-  // Invoice type: 'product' or 'delivery'
-  const [invoiceType, setInvoiceType] = useState('delivery');
-  
   const [invoice, setInvoice] = useState({
     CustomerRef: { value: '' },
     BillEmail: { Address: '' },
@@ -28,19 +25,99 @@ const CreateInvoice = () => {
     ],
   });
 
-  // State for commission calculation (delivery invoices)
-  const [transactionValue, setTransactionValue] = useState(0);
-  const [deliveryToCustomer, setDeliveryToCustomer] = useState(''); // Customer receiving the delivery
-
-  // State for product sales
-  const [selectedItem, setSelectedItem] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  // State for managing multiple line items
+  const [lineItems, setLineItems] = useState([
+    {
+      id: 1,
+      type: 'delivery', // 'delivery' or 'product'
+      transactionValue: 0,
+      deliveryToCustomer: '',
+      selectedItem: '',
+      quantity: 1,
+      amount: 0,
+      description: 'Product Delivery Service - Commission TBD'
+    }
+  ]);
 
   // Helper function to calculate tiered commission rate
   const calculateCommissionRate = (value) => {
     if (value < 49.99) return 15;
     if (value >= 50 && value <= 99.99) return 12;
     return 10; // > $100
+  };
+
+  // Function to add a new line item
+  const addLineItem = () => {
+    const newId = Math.max(...lineItems.map(item => item.id)) + 1;
+    setLineItems([...lineItems, {
+      id: newId,
+      type: 'delivery',
+      transactionValue: 0,
+      deliveryToCustomer: '',
+      selectedItem: '',
+      quantity: 1,
+      amount: 0,
+      description: 'Product Delivery Service - Commission TBD'
+    }]);
+  };
+
+  // Function to remove a line item
+  const removeLineItem = (id) => {
+    if (lineItems.length > 1) {
+      setLineItems(lineItems.filter(item => item.id !== id));
+      updateInvoiceFromLineItems(lineItems.filter(item => item.id !== id));
+    }
+  };
+
+  // Function to update a specific line item
+  const updateLineItem = (id, updates) => {
+    const updatedItems = lineItems.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    );
+    setLineItems(updatedItems);
+    updateInvoiceFromLineItems(updatedItems);
+  };
+
+  // Function to update the main invoice from line items
+  const updateInvoiceFromLineItems = (items) => {
+    const lines = items.map(item => {
+      let amount = 0;
+      let description = item.description;
+      
+      if (item.type === 'delivery') {
+        const commissionRate = calculateCommissionRate(item.transactionValue);
+        amount = (item.transactionValue * commissionRate) / 100;
+        
+        const deliveryCustomer = customers.find(c => c.Id === item.deliveryToCustomer);
+        const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
+        
+        description = deliveryToName 
+          ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
+          : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)})`;
+      } else if (item.type === 'product' && item.selectedItem) {
+        const selectedItemData = items.find(i => i.Id === item.selectedItem);
+        if (selectedItemData) {
+          amount = (selectedItemData.UnitPrice || 0) * item.quantity;
+          description = selectedItemData.Description || selectedItemData.Name;
+        }
+      }
+      
+      return {
+        Amount: amount,
+        DetailType: 'SalesItemLineDetail',
+        SalesItemLineDetail: {
+          ItemRef: { value: item.selectedItem || '1' },
+          Qty: item.quantity,
+          UnitPrice: item.type === 'delivery' ? amount : (items.find(i => i.Id === item.selectedItem)?.UnitPrice || 0)
+        },
+        Description: description
+      };
+    });
+    
+    setInvoice(prev => ({
+      ...prev,
+      Line: lines
+    }));
   };
 
   // Fetch customers on component mount
@@ -83,49 +160,6 @@ const CreateInvoice = () => {
     }));
   };
 
-  // Helper function to update description with all current values
-  const updateDescription = (transValue, deliveryCustomerId) => {
-    if (invoiceType === 'product') {
-      const selectedItemData = items.find(item => item.Id === selectedItem);
-      return selectedItemData ? selectedItemData.Description || selectedItemData.Name : 'Product Sale';
-    }
-    
-    // For delivery invoices
-    const deliveryCustomer = customers.find(c => c.Id === deliveryCustomerId);
-    const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
-    const commissionRate = calculateCommissionRate(transValue);
-    
-    console.log('UpdateDescription called with:');
-    console.log('- transValue:', transValue);
-    console.log('- calculated commissionRate:', commissionRate);
-    console.log('- deliveryCustomerId:', deliveryCustomerId);
-    console.log('- deliveryCustomer found:', deliveryCustomer);
-    console.log('- deliveryToName:', deliveryToName);
-    
-    const description = deliveryToName 
-      ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${transValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
-      : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${transValue.toFixed(2)})`;
-    
-    console.log('- Generated description:', description);
-    return description;
-  };
-
-  const handleDeliveryCustomerChange = (e) => {
-    const selectedDeliveryCustomerId = e.target.value;
-    setDeliveryToCustomer(selectedDeliveryCustomerId);
-    
-    // Update description with current values
-    const description = updateDescription(transactionValue, selectedDeliveryCustomerId);
-    
-    setInvoice((prevInvoice) => ({
-      ...prevInvoice,
-      Line: [{
-        ...prevInvoice.Line[0],
-        Description: description
-      }]
-    }));
-  };
-
   const handleEmailChange = (e) => {
     const { value } = e.target;
     setInvoice((prevInvoice) => ({
@@ -134,210 +168,104 @@ const CreateInvoice = () => {
     }));
   };
 
-  const handleAmountChange = (e) => {
-    const amount = parseFloat(e.target.value) || 0;
-    setInvoice((prevInvoice) => ({
-      ...prevInvoice,
-      Line: [{
-        ...prevInvoice.Line[0],
-        Amount: amount,
-        SalesItemLineDetail: {
-          ...prevInvoice.Line[0].SalesItemLineDetail,
-          UnitPrice: amount
-        }
-      }]
-    }));
-  };
 
-  const handleTransactionValueChange = (e) => {
-    const value = parseFloat(e.target.value) || 0;
-    setTransactionValue(value);
-    
-    // Calculate commission automatically using tiered rates
-    const commissionRate = calculateCommissionRate(value);
-    const commissionAmount = (value * commissionRate) / 100;
-    
-    // Update description with current values
-    const description = updateDescription(value, deliveryToCustomer);
-    
-    setInvoice((prevInvoice) => ({
-      ...prevInvoice,
-      Line: [{
-        ...prevInvoice.Line[0],
-        Amount: commissionAmount,
-        SalesItemLineDetail: {
-          ...prevInvoice.Line[0].SalesItemLineDetail,
-          UnitPrice: commissionAmount
-        },
-        Description: description
-      }]
-    }));
-  };
-
-  const handleDescriptionChange = (e) => {
-    const description = e.target.value;
-    setInvoice((prevInvoice) => ({
-      ...prevInvoice,
-      Line: [{
-        ...prevInvoice.Line[0],
-        Description: description
-      }]
-    }));
-  };
-
-  const handleInvoiceTypeChange = (e) => {
-    const type = e.target.value;
-    setInvoiceType(type);
-    
-    // Reset form based on type
-    if (type === 'delivery') {
-      setTransactionValue(0);
-      setDeliveryToCustomer('');
-      setSelectedItem('');
-      setInvoice((prevInvoice) => ({
-        ...prevInvoice,
-        Line: [{
-          ...prevInvoice.Line[0],
-          Amount: 0,
-          SalesItemLineDetail: {
-            ...prevInvoice.Line[0].SalesItemLineDetail,
-            ItemRef: { value: '1' },
-            UnitPrice: 0
-          },
-          Description: 'Product Delivery Service - Commission TBD'
-        }]
-      }));
-    } else {
-      // Product sale
-      setTransactionValue(0);
-      setDeliveryToCustomer('');
-      setInvoice((prevInvoice) => ({
-        ...prevInvoice,
-        Line: [{
-          ...prevInvoice.Line[0],
-          Amount: 0,
-          SalesItemLineDetail: {
-            ...prevInvoice.Line[0].SalesItemLineDetail,
-            ItemRef: { value: selectedItem || '1' },
-            UnitPrice: 0
-          },
-          Description: 'Product Sale'
-        }]
-      }));
-    }
-  };
-
-  const handleItemChange = (e) => {
-    const itemId = e.target.value;
-    setSelectedItem(itemId);
-    
-    const selectedItemData = items.find(item => item.Id === itemId);
-    if (selectedItemData) {
-      setInvoice((prevInvoice) => ({
-        ...prevInvoice,
-        Line: [{
-          ...prevInvoice.Line[0],
-          Description: selectedItemData.Description || selectedItemData.Name,
-          Amount: selectedItemData.UnitPrice ? (selectedItemData.UnitPrice * quantity) : 0,
-          SalesItemLineDetail: {
-            ...prevInvoice.Line[0].SalesItemLineDetail,
-            ItemRef: { value: itemId },
-            UnitPrice: selectedItemData.UnitPrice || 0
-          }
-        }]
-      }));
-    }
-  };
-
-  const handleQuantityChange = (e) => {
-    const qty = parseInt(e.target.value) || 1;
-    setQuantity(qty);
-    
-    if (invoiceType === 'product' && selectedItem) {
-      const selectedItemData = items.find(item => item.Id === selectedItem);
-      if (selectedItemData) {
-        const amount = (selectedItemData.UnitPrice || 0) * qty;
-        setInvoice((prevInvoice) => ({
-          ...prevInvoice,
-          Line: [{
-            ...prevInvoice.Line[0],
-            Amount: amount,
-            SalesItemLineDetail: {
-              ...prevInvoice.Line[0].SalesItemLineDetail,
-              Qty: qty,
-              UnitPrice: selectedItemData.UnitPrice || 0
-            }
-          }]
-        }));
-      }
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
     
-    // Validate based on invoice type
-    if (invoiceType === 'delivery') {
-      if (!deliveryToCustomer) {
-        setMessage('Please select a delivery recipient before creating the invoice.');
-        setMessageType('error');
-        setLoading(false);
-        return;
-      }
-      
-      if (transactionValue <= 0) {
-        setMessage('Please enter a transaction value greater than $0.');
-        setMessageType('error');
-        setLoading(false);
-        return;
-      }
-    } else {
-      // Product sale validation
-      if (!selectedItem) {
-        setMessage('Please select an item to sell.');
-        setMessageType('error');
-        setLoading(false);
-        return;
+    // Validate line items
+    for (let item of lineItems) {
+      if (item.type === 'delivery') {
+        if (!item.deliveryToCustomer) {
+          setMessage(`Line item ${lineItems.indexOf(item) + 1}: Please select a delivery recipient.`);
+          setMessageType('error');
+          setLoading(false);
+          return;
+        }
+        
+        if (item.transactionValue <= 0) {
+          setMessage(`Line item ${lineItems.indexOf(item) + 1}: Please enter a transaction value greater than $0.`);
+          setMessageType('error');
+          setLoading(false);
+          return;
+        }
+      } else {
+        if (!item.selectedItem) {
+          setMessage(`Line item ${lineItems.indexOf(item) + 1}: Please select an item to sell.`);
+          setMessageType('error');
+          setLoading(false);
+          return;
+        }
       }
     }
     
     try {
-      let finalDescription;
+      // Build the invoice from line items
+      const lines = lineItems.map(item => {
+        let amount = 0;
+        let description = '';
+        let itemRef = '1';
+        let unitPrice = 0;
+        
+        if (item.type === 'delivery') {
+          const commissionRate = calculateCommissionRate(item.transactionValue);
+          amount = (item.transactionValue * commissionRate) / 100;
+          unitPrice = amount;
+          
+          const deliveryCustomer = customers.find(c => c.Id === item.deliveryToCustomer);
+          const deliveryToName = deliveryCustomer ? (deliveryCustomer.DisplayName || deliveryCustomer.Name) : '';
+          
+          description = deliveryToName 
+            ? `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)}) - Delivering to: ${deliveryToName}`
+            : `Product Delivery Service - ${commissionRate}% Commission (Transaction Value: $${item.transactionValue.toFixed(2)})`;
+        } else {
+          const selectedItemData = items.find(i => i.Id === item.selectedItem);
+          if (selectedItemData) {
+            amount = (selectedItemData.UnitPrice || 0) * item.quantity;
+            unitPrice = selectedItemData.UnitPrice || 0;
+            itemRef = item.selectedItem;
+            description = selectedItemData.Description || selectedItemData.Name;
+          }
+        }
+        
+        return {
+          Amount: amount,
+          DetailType: 'SalesItemLineDetail',
+          SalesItemLineDetail: {
+            ItemRef: { value: itemRef },
+            Qty: item.quantity,
+            UnitPrice: unitPrice
+          },
+          Description: description
+        };
+      });
       
-      if (invoiceType === 'delivery') {
-        // Ensure the description is up-to-date with delivery recipient
-        finalDescription = updateDescription(transactionValue, deliveryToCustomer);
-      } else {
-        // Use current description for product sales
-        finalDescription = invoice.Line[0].Description;
-      }
-      
-      // Create final invoice object with updated description
       const finalInvoice = {
         ...invoice,
-        Line: [{
-          ...invoice.Line[0],
-          Description: finalDescription
-        }]
+        Line: lines
       };
       
-      console.log('Sending invoice data:', finalInvoice);
-      console.log('Invoice type:', invoiceType);
-      console.log('Final Invoice Description:', finalDescription);
+      console.log('Sending multi-line invoice data:', finalInvoice);
+      console.log('Line items:', lineItems);
       
       const response = await axios.post('http://localhost:3001/create-invoice', finalInvoice);
       console.log('Invoice created successfully', response.data);
-      setMessage(`Invoice created successfully! Invoice ID: ${response.data.QueryResponse?.Invoice?.[0]?.Id || 'N/A'}`);
+      setMessage(`Invoice created successfully! Invoice ID: ${response.data.QueryResponse?.Invoice?.[0]?.Id || 'N/A'} with ${lineItems.length} line item(s)`);
       setMessageType('success');
       
       // Reset form
-      setTransactionValue(0);
-      setDeliveryToCustomer('');
-      setSelectedItem('');
-      setQuantity(1);
-      setInvoiceType('delivery');
+      setLineItems([{
+        id: 1,
+        type: 'delivery',
+        transactionValue: 0,
+        deliveryToCustomer: '',
+        selectedItem: '',
+        quantity: 1,
+        amount: 0,
+        description: 'Product Delivery Service - Commission TBD'
+      }]);
       setInvoice({
         CustomerRef: { value: '' },
         BillEmail: { Address: '' },
@@ -383,26 +311,6 @@ const CreateInvoice = () => {
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-            Invoice Type:
-          </label>
-          <select
-            value={invoiceType}
-            onChange={handleInvoiceTypeChange}
-            style={{ width: '100%', padding: '8px', fontSize: '14px' }}
-          >
-            <option value="delivery">Delivery Service</option>
-            <option value="product">Product Sale</option>
-          </select>
-          <small style={{ color: '#666' }}>
-            {invoiceType === 'delivery' 
-              ? 'Commission-based delivery service with tiered rates' 
-              : 'Direct sale of products from inventory'
-            }
-          </small>
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
             Select Customer:
           </label>
           <select
@@ -434,189 +342,248 @@ const CreateInvoice = () => {
           />
         </div>
 
-        {invoiceType === 'product' && (
-          <>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Select Item:
-              </label>
-              <select
-                value={selectedItem}
-                onChange={handleItemChange}
-                required
-                style={{ width: '100%', padding: '8px', fontSize: '14px' }}
-              >
-                <option value="">-- Select an Item --</option>
-                {items.map(item => (
-                  <option key={item.Id} value={item.Id}>
-                    {item.Name} - ${item.UnitPrice || 0}
-                  </option>
-                ))}
-              </select>
-              <small style={{ color: '#666' }}>Choose the product you're selling</small>
-            </div>
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0 }}>Invoice Line Items</h3>
+            <button 
+              type="button"
+              onClick={addLineItem}
+              style={{
+                backgroundColor: '#28a745',
+                color: 'white',
+                padding: '8px 15px',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}
+            >
+              + Add Line Item
+            </button>
+          </div>
 
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Quantity:
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={handleQuantityChange}
-                required
-                style={{ width: '100%', padding: '8px', fontSize: '14px' }}
-              />
-              <small style={{ color: '#666' }}>Number of items to sell</small>
-            </div>
-          </>
-        )}
-
-        {invoiceType === 'delivery' && (
-          <>
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Delivering To:
-              </label>
-              <select
-                value={deliveryToCustomer}
-                onChange={handleDeliveryCustomerChange}
-                required
-                style={{ width: '100%', padding: '8px', fontSize: '14px' }}
-              >
-                <option value="">-- Select Delivery Recipient --</option>
-                {customers
-                  .filter(customer => customer.Id !== invoice.CustomerRef.value) // Exclude the customer being invoiced
-                  .map(customer => (
-                    <option key={customer.Id} value={customer.Id}>
-                      {customer.DisplayName || customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
-                    </option>
-                  ))
-                }
-              </select>
-              <small style={{ color: '#666' }}>Select who will receive the delivered products</small>
-            </div>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Transaction Value ($):
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={transactionValue}
-                onChange={handleTransactionValueChange}
-                required
-                placeholder="Value of goods being delivered"
-                style={{ width: '100%', padding: '8px', fontSize: '14px' }}
-              />
-              <small style={{ color: '#666' }}>
-                Enter the total value of the products you're delivering. 
-                Commission rates: 15% (&lt;$50), 12% ($50-$99.99), 10% (≥$100)
-              </small>
-            </div>
-          </>
-        )}
-
-        <div style={{ marginBottom: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-            Invoice Description:
-          </label>
-          <textarea
-            value={invoice.Line[0].Description}
-            onChange={handleDescriptionChange}
-            required
-            placeholder="Describe the service or product..."
-            rows="3"
-            style={{ width: '100%', padding: '8px', fontSize: '14px', resize: 'vertical' }}
-          />
-        </div>
-
-        <div style={{ 
-          marginBottom: '15px', 
-          padding: '15px', 
-          backgroundColor: '#f8f9fa', 
-          border: '1px solid #dee2e6', 
-          borderRadius: '4px' 
-        }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#495057' }}>
-            {invoiceType === 'delivery' ? 'Delivery Summary:' : 'Sale Summary:'}
-          </h4>
-          <div style={{ fontSize: '14px', lineHeight: '1.5' }}>
-            {invoiceType === 'delivery' ? (
-              <>
-                <div><strong>Transaction Value:</strong> ${transactionValue.toFixed(2)}</div>
-                <div><strong>Commission Rate:</strong> {calculateCommissionRate(transactionValue)}%</div>
-                {deliveryToCustomer && (
-                  <div><strong>Delivering To:</strong> {customers.find(c => c.Id === deliveryToCustomer)?.DisplayName || customers.find(c => c.Id === deliveryToCustomer)?.Name || 'Unknown'}</div>
+          {lineItems.map((lineItem, index) => (
+            <div key={lineItem.id} style={{
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              padding: '15px',
+              marginBottom: '15px',
+              backgroundColor: '#f8f9fa'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0 }}>Line Item {index + 1}</h4>
+                {lineItems.length > 1 && (
+                  <button 
+                    type="button"
+                    onClick={() => removeLineItem(lineItem.id)}
+                    style={{
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      padding: '5px 10px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Remove
+                  </button>
                 )}
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#28a745', marginTop: '8px' }}>
-                  <strong>Your Commission:</strong> ${invoice.Line[0].Amount.toFixed(2)}
-                </div>
-              </>
-            ) : (
-              <>
-                {selectedItem && (
-                  <>
-                    <div><strong>Item:</strong> {items.find(i => i.Id === selectedItem)?.Name || 'Unknown'}</div>
-                    <div><strong>Unit Price:</strong> ${items.find(i => i.Id === selectedItem)?.UnitPrice || 0}</div>
-                    <div><strong>Quantity:</strong> {quantity}</div>
-                  </>
-                )}
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#28a745', marginTop: '8px' }}>
-                  <strong>Total Amount:</strong> ${invoice.Line[0].Amount.toFixed(2)}
-                </div>
-              </>
-            )}
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                  Item Type:
+                </label>
+                <select
+                  value={lineItem.type}
+                  onChange={(e) => updateLineItem(lineItem.id, { 
+                    type: e.target.value,
+                    transactionValue: 0,
+                    deliveryToCustomer: '',
+                    selectedItem: '',
+                    quantity: 1,
+                    amount: 0
+                  })}
+                  style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                >
+                  <option value="delivery">Delivery Service</option>
+                  <option value="product">Product Sale</option>
+                </select>
+              </div>
+
+              {lineItem.type === 'delivery' ? (
+                <>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                      Delivering To:
+                    </label>
+                    <select
+                      value={lineItem.deliveryToCustomer}
+                      onChange={(e) => updateLineItem(lineItem.id, { deliveryToCustomer: e.target.value })}
+                      required
+                      style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                    >
+                      <option value="">-- Select Delivery Recipient --</option>
+                      {customers
+                        .filter(customer => customer.Id !== invoice.CustomerRef.value)
+                        .map(customer => (
+                          <option key={customer.Id} value={customer.Id}>
+                            {customer.DisplayName || customer.Name} {customer.CompanyName ? `(${customer.CompanyName})` : ''}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                      Transaction Value ($):
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={lineItem.transactionValue}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        const commissionRate = calculateCommissionRate(value);
+                        const amount = (value * commissionRate) / 100;
+                        updateLineItem(lineItem.id, { 
+                          transactionValue: value,
+                          amount: amount
+                        });
+                      }}
+                      required
+                      style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                    />
+                    <small style={{ color: '#666' }}>
+                      Commission: {calculateCommissionRate(lineItem.transactionValue)}% = ${((lineItem.transactionValue * calculateCommissionRate(lineItem.transactionValue)) / 100).toFixed(2)}
+                    </small>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                      Select Item:
+                    </label>
+                    <select
+                      value={lineItem.selectedItem}
+                      onChange={(e) => {
+                        const itemId = e.target.value;
+                        const selectedItemData = items.find(item => item.Id === itemId);
+                        updateLineItem(lineItem.id, { 
+                          selectedItem: itemId,
+                          amount: selectedItemData ? (selectedItemData.UnitPrice || 0) * lineItem.quantity : 0
+                        });
+                      }}
+                      required
+                      style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                    >
+                      <option value="">-- Select an Item --</option>
+                      {items.map(item => (
+                        <option key={item.Id} value={item.Id}>
+                          {item.Name} - ${item.UnitPrice || 0}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                      Quantity:
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={lineItem.quantity}
+                      onChange={(e) => {
+                        const qty = parseInt(e.target.value) || 1;
+                        const selectedItemData = items.find(item => item.Id === lineItem.selectedItem);
+                        updateLineItem(lineItem.id, { 
+                          quantity: qty,
+                          amount: selectedItemData ? (selectedItemData.UnitPrice || 0) * qty : 0
+                        });
+                      }}
+                      required
+                      style={{ width: '100%', padding: '8px', fontSize: '14px' }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div style={{ 
+                padding: '10px', 
+                backgroundColor: '#e9ecef', 
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}>
+                Line Total: ${((lineItem.type === 'delivery' 
+                  ? (lineItem.transactionValue * calculateCommissionRate(lineItem.transactionValue)) / 100
+                  : lineItem.amount) || 0).toFixed(2)}
+              </div>
+            </div>
+          ))}
+
+          <div style={{ 
+            padding: '15px', 
+            backgroundColor: '#d4edda', 
+            border: '1px solid #c3e6cb',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }}>
+            Invoice Total: ${lineItems.reduce((total, item) => {
+              const lineTotal = item.type === 'delivery' 
+                ? (item.transactionValue * calculateCommissionRate(item.transactionValue)) / 100
+                : item.amount;
+              return total + (lineTotal || 0);
+            }, 0).toFixed(2)}
           </div>
         </div>
 
         <div style={{ marginBottom: '15px' }}>
           <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-            {invoiceType === 'delivery' ? 'Commission Amount ($):' : 'Total Sale Amount ($):'}
+            Invoice Description (Optional):
           </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={invoice.Line[0].Amount}
-            onChange={handleAmountChange}
-            required
-            style={{ 
-              width: '100%', 
-              padding: '8px', 
-              fontSize: '14px',
-              backgroundColor: '#e9ecef',
-              fontWeight: 'bold'
+          <textarea
+            value={invoice.Line[0]?.Description || ''}
+            onChange={(e) => {
+              const description = e.target.value;
+              setInvoice((prevInvoice) => ({
+                ...prevInvoice,
+                Line: [{
+                  ...prevInvoice.Line[0],
+                  Description: description
+                }]
+              }));
             }}
-            readOnly
+            placeholder="Add an overall description for this invoice..."
+            rows="2"
+            style={{ width: '100%', padding: '8px', fontSize: '14px', resize: 'vertical' }}
           />
-          <small style={{ color: '#666' }}>
-            {invoiceType === 'delivery' 
-              ? 'Commission calculated automatically based on tiered rates' 
-              : 'Amount calculated based on item price and quantity'
-            }
-          </small>
+          <small style={{ color: '#666' }}>This will be added as a header description. Individual line items have their own descriptions.</small>
         </div>
 
         <button 
           type="submit" 
-          disabled={loading}
+          disabled={loading || lineItems.length === 0}
           style={{
-            backgroundColor: loading ? '#ccc' : '#007bff',
+            backgroundColor: loading || lineItems.length === 0 ? '#ccc' : '#007bff',
             color: 'white',
             padding: '10px 20px',
             border: 'none',
             borderRadius: '4px',
             fontSize: '16px',
-            cursor: loading ? 'not-allowed' : 'pointer'
+            cursor: loading || lineItems.length === 0 ? 'not-allowed' : 'pointer'
           }}
         >
           {loading 
-            ? (invoiceType === 'delivery' ? 'Creating Delivery Invoice...' : 'Creating Sales Invoice...') 
-            : (invoiceType === 'delivery' ? 'Create Delivery Invoice' : 'Create Sales Invoice')
+            ? `Creating Invoice with ${lineItems.length} item(s)...` 
+            : `Create Invoice (${lineItems.length} line item${lineItems.length === 1 ? '' : 's'})`
           }
         </button>
       </form>
