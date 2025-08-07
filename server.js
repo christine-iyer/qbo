@@ -108,6 +108,261 @@ app.get('/customers', async (req, res) => {
   }
 });
 
+// Bulk customer creation endpoint
+app.post('/customers/bulk', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  const { customers } = req.body;
+  
+  console.log('Creating bulk customers for company:', companyId);
+  console.log('Number of customers to create:', customers?.length || 0);
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  if (!customers || !Array.isArray(customers) || customers.length === 0) {
+    return res.status(400).json({ error: 'Invalid request. Customers array is required.' });
+  }
+
+  try {
+    const results = [];
+    const errors = [];
+
+    console.log('Received customers data:', JSON.stringify(customers, null, 2));
+
+    // Process customers one by one to avoid rate limits
+    for (let i = 0; i < customers.length; i++) {
+      const customer = customers[i];
+      
+      try {
+        console.log(`Creating customer ${i + 1}/${customers.length}: ${customer.name}`);
+        console.log('Customer data structure:', JSON.stringify(customer, null, 2));
+        
+        // Clean the customer name for QuickBooks (no special characters, reasonable length)
+        const cleanName = customer.name
+          .replace(/[^\w\s\-.]/g, '') // Remove special characters except spaces, hyphens, dots
+          .replace(/\s+/g, ' ')        // Replace multiple spaces with single space
+          .trim()                      // Remove leading/trailing spaces
+          .substring(0, 100);          // Limit length
+        
+        // Create a more complete QuickBooks Customer format
+        const qbCustomer = {
+          Name: cleanName,
+          DisplayName: cleanName,
+          CompanyName: cleanName,
+          Active: true
+        };
+
+        // Only add address if it exists and has required fields
+        if (customer.ShipAddr && customer.ShipAddr.Line1 && customer.ShipAddr.City) {
+          qbCustomer.BillAddr = {
+            Line1: customer.ShipAddr.Line1,
+            City: customer.ShipAddr.City,
+            CountrySubDivisionCode: customer.ShipAddr.CountrySubDivisionCode || "ME",
+            PostalCode: customer.ShipAddr.PostalCode,
+            Country: "US"
+          };
+          qbCustomer.ShipAddr = {
+            Line1: customer.ShipAddr.Line1,
+            City: customer.ShipAddr.City,
+            CountrySubDivisionCode: customer.ShipAddr.CountrySubDivisionCode || "ME",
+            PostalCode: customer.ShipAddr.PostalCode,
+            Country: "US"
+          };
+        }
+
+        console.log('Sending customer data to QuickBooks:', JSON.stringify(qbCustomer, null, 2));
+
+        const response = await axios.post(
+          `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/customer`,
+          qbCustomer,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        console.log('QuickBooks response:', JSON.stringify(response.data, null, 2));
+
+        // QuickBooks returns the customer in the QueryResponse
+        const createdCustomer = response.data.QueryResponse?.Customer?.[0];
+        if (!createdCustomer) {
+          throw new Error('No customer returned from QuickBooks API');
+        }
+
+        results.push({
+          originalName: customer.name,
+          success: true,
+          customer: createdCustomer,
+          id: createdCustomer.Id
+        });
+
+        console.log(`✅ Created customer: ${customer.name} (ID: ${createdCustomer.Id})`);
+        
+        // Add delay to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (error) {
+        const errorMessage = error.response?.data?.Fault?.Error?.[0]?.Detail || 
+                           error.response?.data?.Fault?.Error?.[0]?.code || 
+                           error.response?.data?.message || 
+                           error.message;
+                           
+        console.error(`❌ Failed to create customer ${customer.name}:`, errorMessage);
+        console.error('Full error response:', JSON.stringify(error.response?.data, null, 2));
+        
+        errors.push({
+          originalName: customer.name,
+          success: false,
+          error: errorMessage,
+          details: error.response?.data?.Fault?.Error?.[0] || error.response?.data,
+          fullError: error.response?.data
+        });
+      }
+    }
+
+    console.log(`Bulk creation completed. Success: ${results.length}, Errors: ${errors.length}`);
+
+    res.json({
+      success: true,
+      message: `Bulk customer creation completed. ${results.length} created, ${errors.length} failed.`,
+      results,
+      errors,
+      totalAttempted: customers.length,
+      totalSuccessful: results.length,
+      totalFailed: errors.length
+    });
+
+  } catch (error) {
+    console.error('Error in bulk customer creation:', error.response?.data || error.message);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create customers',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Test single customer creation endpoint to debug validation issues
+app.post('/customers/test', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  
+  console.log('Testing single customer creation for company:', companyId);
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  try {
+    // Test with absolute minimal required fields only
+    const timestamp = Date.now();
+    const testCustomer = {
+      DisplayName: `TestCustomer${timestamp}`
+    };
+
+    console.log('Testing with minimal DisplayName only:', JSON.stringify(testCustomer, null, 2));
+
+    const response = await axios.post(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/customer`,
+      { Customer: testCustomer },
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    console.log('✅ Test customer created successfully:', response.data);
+    res.json({ success: true, data: response.data });
+
+  } catch (error) {
+    console.error('❌ Test customer creation failed:', JSON.stringify(error.response?.data, null, 2));
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create test customer',
+      details: error.response?.data
+    });
+  }
+});
+
+// Single customer creation endpoint
+app.post('/customers/create', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  const customerData = req.body;
+  
+  console.log('Creating single customer for company:', companyId);
+  console.log('Customer data received:', JSON.stringify(customerData, null, 2));
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  if (!customerData.Name || !customerData.Name.trim()) {
+    return res.status(400).json({ error: 'Customer name is required.' });
+  }
+
+  try {
+    // Ensure we have the minimum required fields for QuickBooks
+    const customerToCreate = {
+      Name: customerData.Name.trim(),
+      DisplayName: customerData.DisplayName || customerData.Name.trim(),
+      Active: true,
+      ...customerData // Spread the rest of the customer data
+    };
+
+    console.log('Sending customer data to QuickBooks:', JSON.stringify(customerToCreate, null, 2));
+
+    const response = await axios.post(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/customer`,
+      customerToCreate,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    console.log('QuickBooks response:', JSON.stringify(response.data, null, 2));
+
+    // QuickBooks returns the customer in the QueryResponse
+    const createdCustomer = response.data.QueryResponse?.Customer?.[0];
+    if (!createdCustomer) {
+      throw new Error('No customer returned from QuickBooks API');
+    }
+
+    console.log(`✅ Created customer: ${customerData.Name} (ID: ${createdCustomer.Id})`);
+
+    res.json({
+      success: true,
+      customer: createdCustomer,
+      message: `Customer "${customerData.Name}" created successfully`
+    });
+
+  } catch (error) {
+    const errorMessage = error.response?.data?.Fault?.Error?.[0]?.Detail || 
+                       error.response?.data?.Fault?.Error?.[0]?.code || 
+                       error.response?.data?.message || 
+                       error.message;
+                       
+    console.error('❌ Failed to create customer:', errorMessage);
+    console.error('Full error response:', JSON.stringify(error.response?.data, null, 2));
+    
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage,
+      details: error.response?.data?.Fault?.Error?.[0] || error.response?.data,
+      fullError: error.response?.data
+    });
+  }
+});
+
 // New endpoint to fetch items/products from QuickBooks
 app.get('/items', async (req, res) => {
   const companyId = process.env.COMPANY_ID;

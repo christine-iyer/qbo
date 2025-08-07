@@ -122,10 +122,41 @@ const CreateInvoice = () => {
     }));
   };
 
-  // Fetch customers on component mount
+  // Fetch customers on component mount and check for pre-filled data
   useEffect(() => {
     fetchCustomers();
     fetchItems();
+    
+    // Check for pre-filled data from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const prefilledData = urlParams.get('data');
+    if (prefilledData) {
+      try {
+        const invoiceData = JSON.parse(decodeURIComponent(prefilledData));
+        if (invoiceData.CustomerRef) {
+          setInvoice(prev => ({
+            ...prev,
+            CustomerRef: invoiceData.CustomerRef
+          }));
+        }
+        if (invoiceData.Line && invoiceData.Line[0]) {
+          const line = invoiceData.Line[0];
+          setLineItems([{
+            id: 1,
+            type: 'delivery',
+            transactionValue: line.Amount || 50,
+            deliveryToCustomer: '',
+            deliveryDate: new Date().toISOString().split('T')[0],
+            selectedItem: '1',
+            quantity: 1,
+            amount: line.Amount || 50,
+            description: line.Description || 'Delivery Service'
+          }]);
+        }
+      } catch (error) {
+        console.error('Error parsing pre-filled data:', error);
+      }
+    }
   }, []);
 
   const fetchCustomers = async () => {

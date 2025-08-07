@@ -9,8 +9,14 @@ export default function Nav(props) {
       <Link to="/create-invoice">
         <div>Create Invoice</div>
       </Link>
+      <Link to="/create-customer">
+        <div>Create Customer</div>
+      </Link>
       <Link to="/customers">
         <div>View Customers</div>
+      </Link>
+      <Link to="/import-customers">
+        <div>Import Customers</div>
       </Link>
       <Link to="/manage-invoices">
         <div>Manage Invoices</div>
@@ -20,6 +26,9 @@ export default function Nav(props) {
       </Link>
       <Link to="/delivery-report">
         <div>Delivery Report</div>
+      </Link>
+      <Link to="/delivery-destinations">
+        <div>Manage Destinations</div>
       </Link>
     </div>
   );

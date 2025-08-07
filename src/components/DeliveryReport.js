@@ -276,11 +276,33 @@ const DeliveryReport = () => {
       
       // DIRECT OVERRIDES: Force specific coordinates for known businesses
       const businessOverrides = {
+        // Original California businesses
         'Cool Cars': { lat: 37.4636, lng: -122.4286, location: 'Half Moon Bay CA' },
         'Amy\'s Bird Sanctuary': { lat: 37.6017, lng: -122.4014, location: 'Bayshore CA' },
         'Jeff\'s Jalopies': { lat: 37.4530, lng: -122.1817, location: 'Menlo Park CA' },
         'Bill\'s Windsurf Shop': { lat: 37.4636, lng: -122.4286, location: 'Half Moon Bay CA' },
-        'Freeman Sporting Goods': { lat: 37.4419, lng: -122.1430, location: 'Middlefield CA' }
+        'Freeman Sporting Goods': { lat: 37.4419, lng: -122.1430, location: 'Middlefield CA' },
+        
+        // New Maine businesses
+        'Good Tern': { lat: 44.1037, lng: -69.1097, location: 'Rockland ME' },
+        'Tenderwild': { lat: 44.1828, lng: -69.0712, location: 'Rockport ME' },
+        'Fresh off the Farm': { lat: 44.1828, lng: -69.0712, location: 'Rockport ME' },
+        'French and Braun': { lat: 44.2092, lng: -69.0653, location: 'Camden ME' },
+        'Megunticook': { lat: 44.2092, lng: -69.0653, location: 'Camden ME' },
+        'Owen\'s General Store': { lat: 44.2631, lng: -69.0331, location: 'Lincolnville ME' },
+        '3 Bug Farm': { lat: 44.2631, lng: -69.0331, location: 'Lincolnville ME' },
+        'Bahner Farm': { lat: 44.4292, lng: -69.0681, location: 'Belmont ME' },
+        'Marsh River': { lat: 44.5353, lng: -69.1261, location: 'Brooks ME' },
+        'Blue Hill Coop': { lat: 44.4081, lng: -68.5900, location: 'Blue Hill ME' },
+        'Blue Hill Hannaford': { lat: 44.4081, lng: -68.5900, location: 'Blue Hill ME' },
+        'Masons': { lat: 44.7967, lng: -68.7644, location: 'Brewer ME' },
+        'Tiller and Rye': { lat: 44.7967, lng: -68.7644, location: 'Brewer ME' },
+        'Natural Living Center': { lat: 44.8016, lng: -68.7712, location: 'Bangor ME' },
+        'Uncle Dean\'s': { lat: 44.5467, lng: -69.6319, location: 'Waterville ME' },
+        'Morning Glory': { lat: 43.9139, lng: -69.9653, location: 'Brunswick ME' },
+        'Bath Natural Market': { lat: 43.9189, lng: -69.8208, location: 'Bath ME' },
+        'Belfast Co-op': { lat: 44.4261, lng: -69.0064, location: 'Belfast ME' },
+        'Rising Tide': { lat: 44.0331, lng: -69.5156, location: 'Damariscotta ME' }
       };
       
       // Check if this business needs a direct override
