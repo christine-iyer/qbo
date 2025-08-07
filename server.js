@@ -385,6 +385,165 @@ app.put('/api/update-invoice-line', async (req, res) => {
   }
 });
 
+// Delete invoice line item
+app.put('/api/delete-invoice-line', async (req, res) => {
+  try {
+    const { invoiceId, lineIndex } = req.body;
+    
+    if (!invoiceId || lineIndex === undefined) {
+      return res.status(400).json({ error: 'Missing required fields: invoiceId and lineIndex' });
+    }
+
+    console.log(`Deleting line item ${lineIndex} from invoice ${invoiceId}`);
+
+    // First get the current invoice
+    const invoiceResponse = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice/${invoiceId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('Invoice fetch response:', invoiceResponse.data);
+
+    // Handle different response structures
+    let invoice;
+    if (invoiceResponse.data.QueryResponse && invoiceResponse.data.QueryResponse.Invoice) {
+      invoice = invoiceResponse.data.QueryResponse.Invoice[0];
+    } else if (invoiceResponse.data.Invoice) {
+      invoice = invoiceResponse.data.Invoice;
+    } else {
+      throw new Error('Invoice not found in response');
+    }
+
+    console.log('Found invoice:', invoice.DocNumber, 'with', invoice.Line?.length, 'line items');
+    
+    // Remove the line item
+    if (invoice.Line && invoice.Line[lineIndex]) {
+      console.log('Removing line item at index:', lineIndex);
+      invoice.Line = invoice.Line.filter((_, index) => index !== lineIndex);
+      
+      // Recalculate totals
+      let subTotal = 0;
+      invoice.Line.forEach(line => {
+        if (line.Amount) {
+          subTotal += parseFloat(line.Amount);
+        }
+      });
+      invoice.TotalAmt = subTotal;
+      console.log('New total after line removal:', subTotal);
+    } else {
+      throw new Error(`Line item at index ${lineIndex} not found`);
+    }
+
+    // Update the invoice via QuickBooks API
+    const updateResponse = await axios.post(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice`, invoice, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('Update response:', updateResponse.data);
+
+    // Handle different response structures for update
+    let updatedInvoice;
+    if (updateResponse.data.QueryResponse && updateResponse.data.QueryResponse.Invoice) {
+      updatedInvoice = updateResponse.data.QueryResponse.Invoice[0];
+    } else if (updateResponse.data.Invoice) {
+      updatedInvoice = updateResponse.data.Invoice;
+    } else {
+      throw new Error('No invoice returned from QuickBooks API update');
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Line item deleted successfully',
+      invoice: updatedInvoice,
+      lineIndex
+    });
+  } catch (error) {
+    console.error('Error deleting invoice line:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to delete invoice line',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Delete entire invoice
+app.delete('/api/invoice/:invoiceId', async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    
+    if (!invoiceId) {
+      return res.status(400).json({ error: 'Missing invoiceId parameter' });
+    }
+
+    console.log(`Deleting invoice ${invoiceId}`);
+
+    // First get the current invoice to get the SyncToken
+    const invoiceResponse = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice/${invoiceId}`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('Invoice fetch response for deletion:', invoiceResponse.data);
+
+    // Handle different response structures
+    let invoice;
+    if (invoiceResponse.data.QueryResponse && invoiceResponse.data.QueryResponse.Invoice) {
+      invoice = invoiceResponse.data.QueryResponse.Invoice[0];
+    } else if (invoiceResponse.data.Invoice) {
+      invoice = invoiceResponse.data.Invoice;
+    } else {
+      throw new Error('Invoice not found in response');
+    }
+
+    console.log('Found invoice for deletion:', invoice.DocNumber);
+    
+    // QuickBooks uses "soft delete" - set Active to false
+    invoice.Active = false;
+
+    // Update the invoice to mark it as deleted
+    const deleteResponse = await axios.post(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice`, invoice, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+
+    console.log('Delete response:', deleteResponse.data);
+
+    // Handle different response structures for delete
+    let deletedInvoice;
+    if (deleteResponse.data.QueryResponse && deleteResponse.data.QueryResponse.Invoice) {
+      deletedInvoice = deleteResponse.data.QueryResponse.Invoice[0];
+    } else if (deleteResponse.data.Invoice) {
+      deletedInvoice = deleteResponse.data.Invoice;
+    } else {
+      // Some operations might not return the invoice, which is okay for deletion
+      console.log('No invoice returned from delete operation, assuming success');
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Invoice deleted successfully',
+      invoiceId
+    });
+  } catch (error) {
+    console.error('Error deleting invoice:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'Failed to delete invoice',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 app.listen(3001, () => {
   console.log('Server running on port 3001');
 });

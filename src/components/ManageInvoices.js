@@ -221,18 +221,74 @@ const ManageInvoices = () => {
     setEditLineItemData({});
   };
 
-  const handleDelete = async (invoiceId) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
+  // Delete line item function
+  const handleDeleteLineItem = async (invoiceId, lineIndex, itemDescription) => {
+    if (window.confirm(`Are you sure you want to delete this line item: "${itemDescription.substring(0, 50)}..."?`)) {
       try {
-        // In a real implementation, you would delete from QuickBooks
+        setMessage('Deleting line item...');
+        setMessageType('info');
+        
+        console.log(`Deleting line item ${lineIndex} from invoice ${invoiceId}`);
+        
+        // Call backend API to delete line item in QuickBooks
+        const response = await axios.put('http://localhost:3001/api/delete-invoice-line', {
+          invoiceId,
+          lineIndex
+        });
+        
+        if (response.data.success) {
+          // Update local state with the response from QuickBooks
+          setInvoices(invoices.map(invoice => {
+            if (invoice.Id === invoiceId) {
+              return response.data.invoice;
+            }
+            return invoice;
+          }));
+          
+          setMessage('Line item deleted successfully');
+          setMessageType('success');
+        } else {
+          throw new Error(response.data.error || 'Failed to delete line item');
+        }
+      } catch (error) {
+        console.error('Error deleting line item:', error);
+        setMessage(error.response?.data?.error || 'Failed to delete line item');
+        setMessageType('error');
+      }
+    }
+  };
+
+  const handleDelete = async (invoiceId) => {
+    const invoice = invoices.find(inv => inv.Id === invoiceId);
+    const lineItems = analyzeLineItems(invoice);
+    
+    if (window.confirm(
+      `Are you sure you want to delete invoice ${invoice.DocNumber}?\n\n` +
+      `Customer: ${invoice.CustomerName}\n` +
+      `Total Amount: $${invoice.TotalAmt.toFixed(2)}\n` +
+      `Line Items: ${lineItems.totalItems} (${lineItems.deliveryItems.length} delivery, ${lineItems.productItems.length} product)\n\n` +
+      `This action cannot be undone.`
+    )) {
+      try {
+        setMessage('Deleting invoice...');
+        setMessageType('info');
+        
         console.log(`Deleting invoice ${invoiceId}`);
         
-        // For now, just remove locally
-        setInvoices(invoices.filter(inv => inv.Id !== invoiceId));
-        setMessage('Invoice deleted successfully (local only - QuickBooks deletion not implemented)');
-        setMessageType('success');
+        // Call backend API to delete invoice in QuickBooks
+        const response = await axios.delete(`http://localhost:3001/api/invoice/${invoiceId}`);
+        
+        if (response.data.success) {
+          // Remove from local state
+          setInvoices(invoices.filter(inv => inv.Id !== invoiceId));
+          setMessage(`Invoice ${invoice.DocNumber} deleted successfully`);
+          setMessageType('success');
+        } else {
+          throw new Error(response.data.error || 'Failed to delete invoice');
+        }
       } catch (error) {
-        setMessage('Failed to delete invoice');
+        console.error('Error deleting invoice:', error);
+        setMessage(error.response?.data?.error || 'Failed to delete invoice');
         setMessageType('error');
       }
     }
@@ -504,20 +560,36 @@ const ManageInvoices = () => {
                                         To: {item.deliveryRecipient}
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
-                                      style={{
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        padding: '2px 4px',
-                                        borderRadius: '2px',
-                                        fontSize: '9px',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      Edit
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                      <button
+                                        onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
+                                        style={{
+                                          backgroundColor: '#007bff',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '2px 4px',
+                                          borderRadius: '2px',
+                                          fontSize: '9px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteLineItem(invoice.Id, item.index - 1, `Delivery to ${item.deliveryRecipient}`)}
+                                        style={{
+                                          backgroundColor: '#dc3545',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '2px 4px',
+                                          borderRadius: '2px',
+                                          fontSize: '9px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -633,20 +705,36 @@ const ManageInvoices = () => {
                                         {item.description.substring(0, 50)}{item.description.length > 50 ? '...' : ''}
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
-                                      style={{
-                                        backgroundColor: '#007bff',
-                                        color: 'white',
-                                        border: 'none',
-                                        padding: '2px 4px',
-                                        borderRadius: '2px',
-                                        fontSize: '9px',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      Edit
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                      <button
+                                        onClick={() => handleEditLineItem(invoice.Id, item.index - 1, item)}
+                                        style={{
+                                          backgroundColor: '#007bff',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '2px 4px',
+                                          borderRadius: '2px',
+                                          fontSize: '9px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteLineItem(invoice.Id, item.index - 1, item.description)}
+                                        style={{
+                                          backgroundColor: '#dc3545',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '2px 4px',
+                                          borderRadius: '2px',
+                                          fontSize: '9px',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               )}
