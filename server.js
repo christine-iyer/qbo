@@ -363,6 +363,96 @@ app.post('/customers/create', async (req, res) => {
   }
 });
 
+// Update customer endpoint
+app.put('/customers/:id', async (req, res) => {
+  const companyId = process.env.COMPANY_ID;
+  const customerId = req.params.id;
+  const customerData = req.body;
+  
+  console.log('Updating customer for company:', companyId);
+  console.log('Customer ID:', customerId);
+  console.log('Update data received:', JSON.stringify(customerData, null, 2));
+
+  if (!accessToken) {
+    return res.status(401).json({ error: 'Not authenticated. Please authenticate with QuickBooks first.' });
+  }
+
+  try {
+    // First, fetch the current customer to get the SyncToken
+    const fetchResponse = await axios.get(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/customer/${customerId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    // For single customer fetch, the response structure is different - it's directly in Customer
+    const currentCustomer = fetchResponse.data.QueryResponse?.Customer?.[0] || fetchResponse.data.Customer;
+    if (!currentCustomer) {
+      console.log('Customer fetch response:', JSON.stringify(fetchResponse.data, null, 2));
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Prepare the update data - merge current customer with updates
+    const customerToUpdate = {
+      ...currentCustomer,
+      ...customerData,
+      Id: customerId,
+      SyncToken: currentCustomer.SyncToken // Required for updates
+    };
+
+    console.log('Sending customer update to QuickBooks:', JSON.stringify(customerToUpdate, null, 2));
+
+    const updateResponse = await axios.post(
+      `https://sandbox-quickbooks.api.intuit.com/v3/company/${companyId}/customer`,
+      customerToUpdate,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      }
+    );
+
+    console.log('QuickBooks update response:', JSON.stringify(updateResponse.data, null, 2));
+
+    // For customer updates, the response structure is different - it's directly in Customer
+    const updatedCustomer = updateResponse.data.QueryResponse?.Customer?.[0] || updateResponse.data.Customer;
+    if (!updatedCustomer) {
+      console.log('Update response structure:', JSON.stringify(updateResponse.data, null, 2));
+      throw new Error('No customer returned from QuickBooks API');
+    }
+
+    console.log(`✅ Updated customer: ${updatedCustomer.DisplayName} (ID: ${customerId})`);
+
+    res.json({
+      success: true,
+      customer: updatedCustomer,
+      message: `Customer "${updatedCustomer.DisplayName}" updated successfully`
+    });
+
+  } catch (error) {
+    const errorMessage = error.response?.data?.Fault?.Error?.[0]?.Detail || 
+                       error.response?.data?.Fault?.Error?.[0]?.code || 
+                       error.response?.data?.message || 
+                       error.message;
+                       
+    console.error('❌ Failed to update customer:', errorMessage);
+    console.error('Full error response:', JSON.stringify(error.response?.data, null, 2));
+    
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage,
+      details: error.response?.data?.Fault?.Error?.[0] || error.response?.data,
+      fullError: error.response?.data
+    });
+  }
+});
+
 // New endpoint to fetch items/products from QuickBooks
 app.get('/items', async (req, res) => {
   const companyId = process.env.COMPANY_ID;

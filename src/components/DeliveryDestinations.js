@@ -43,6 +43,41 @@ const DeliveryDestinations = () => {
     window.open(`/create-invoice?data=${encodedData}`, '_blank');
   };
 
+  const updateCustomerAddress = async (destination, qbCustomer) => {
+    try {
+      const updateData = {
+        ShipAddr: {
+          Line1: destination.ShipAddr.Line1,
+          City: destination.ShipAddr.City,
+          CountrySubDivisionCode: destination.ShipAddr.CountrySubDivisionCode,
+          PostalCode: destination.ShipAddr.PostalCode,
+          Country: "US"
+        }
+      };
+
+      const response = await fetch(`http://localhost:3001/customers/${qbCustomer.Id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`✅ Updated ${qbCustomer.DisplayName}'s shipping address to ${destination.name} location!`);
+        // Refresh the customer list
+        fetchQBCustomers();
+      } else {
+        throw new Error(result.error || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Error updating customer address:', error);
+      alert(`❌ Failed to update customer address: ${error.message}`);
+    }
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <h2>Maine Delivery Destinations Management</h2>
@@ -128,9 +163,40 @@ const DeliveryDestinations = () => {
                 </select>
               </div>
 
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                  Or Update Customer Address:
+                </label>
+                <select 
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #ddd' 
+                  }}
+                  onChange={(e) => {
+                    const customerId = e.target.value;
+                    const customer = qbCustomers.find(c => c.Id === customerId);
+                    if (customer) {
+                      if (window.confirm(`Update ${customer.DisplayName}'s shipping address to ${selectedDestination.name}?`)) {
+                        updateCustomerAddress(selectedDestination, customer);
+                      }
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Choose customer to update address...</option>
+                  {qbCustomers.map(customer => (
+                    <option key={customer.Id} value={customer.Id}>
+                      {customer.DisplayName} - Current: {customer.ShipAddr?.City || 'No address'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                💡 This will create an invoice for the selected QuickBooks customer 
-                with delivery details for the Maine destination included in the line description.
+                💡 <strong>Create Invoice:</strong> Creates an invoice with delivery details in the description.<br/>
+                🏠 <strong>Update Address:</strong> Permanently updates the customer's shipping address to this Maine location.
               </div>
             </div>
           ) : (
@@ -151,10 +217,13 @@ const DeliveryDestinations = () => {
         <h4>🚚 How This Works:</h4>
         <ol style={{ margin: '10px 0', paddingLeft: '20px' }}>
           <li>Select a Maine destination from the list</li>
-          <li>Choose an existing QuickBooks customer for billing</li>
-          <li>An invoice will be created with the delivery address in the description</li>
+          <li><strong>For Invoicing:</strong> Choose an existing QuickBooks customer and create an invoice with delivery details</li>
+          <li><strong>For Address Updates:</strong> Choose a customer to permanently update their shipping address to the Maine location</li>
           <li>Use the delivery analytics to track and plan your routes</li>
         </ol>
+        <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#e8f5e8', borderRadius: '5px', fontSize: '13px' }}>
+          <strong>💡 Tip:</strong> Updating a customer's address is useful when you want to permanently associate them with a Maine delivery location for future invoices and route planning.
+        </div>
       </div>
     </div>
   );
