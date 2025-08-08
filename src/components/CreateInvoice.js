@@ -2,6 +2,27 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const CreateInvoice = () => {
+  // Helper function to get the closest future Friday
+  const getClosestFutureFriday = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    
+    let daysUntilFriday;
+    if (dayOfWeek <= 5) { // Sunday through Friday
+      daysUntilFriday = 5 - dayOfWeek; // Days until this Friday
+      if (daysUntilFriday === 0) {
+        // If today is Friday, use next Friday
+        daysUntilFriday = 7;
+      }
+    } else { // Saturday
+      daysUntilFriday = 6; // Days until next Friday
+    }
+    
+    const nextFriday = new Date(today);
+    nextFriday.setDate(today.getDate() + daysUntilFriday);
+    return nextFriday.toISOString().split('T')[0];
+  };
+
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +53,7 @@ const CreateInvoice = () => {
       type: 'delivery', // 'delivery' or 'product'
       transactionValue: 0,
       deliveryToCustomer: '',
-      deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
+      deliveryDate: getClosestFutureFriday(),
       selectedItem: '',
       quantity: 1,
       amount: 0,
@@ -55,7 +76,7 @@ const CreateInvoice = () => {
       type: 'delivery',
       transactionValue: 0,
       deliveryToCustomer: '',
-      deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
+      deliveryDate: getClosestFutureFriday(),
       selectedItem: '',
       quantity: 1,
       amount: 0,
@@ -294,7 +315,7 @@ const CreateInvoice = () => {
         type: 'delivery',
         transactionValue: 0,
         deliveryToCustomer: '',
-        deliveryDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
+        deliveryDate: getClosestFutureFriday(),
         selectedItem: '',
         quantity: 1,
         amount: 0,
@@ -435,7 +456,7 @@ const CreateInvoice = () => {
                     type: e.target.value,
                     transactionValue: 0,
                     deliveryToCustomer: '',
-                    deliveryDate: e.target.value === 'delivery' ? new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : '',
+                    deliveryDate: e.target.value === 'delivery' ? getClosestFutureFriday() : '',
                     selectedItem: '',
                     quantity: 1,
                     amount: 0
@@ -483,7 +504,7 @@ const CreateInvoice = () => {
                       style={{ width: '100%', padding: '8px', fontSize: '14px' }}
                     />
                     <small style={{ color: '#666' }}>
-                      When was this delivery completed? (Defaults to 3 days ago for typical billing cycle)
+                      When was this delivery completed? (Defaults to closest future Friday for scheduling)
                     </small>
                   </div>
 

@@ -267,10 +267,10 @@ const ManageInvoices = () => {
       `Customer: ${invoice.CustomerName}\n` +
       `Total Amount: $${invoice.TotalAmt.toFixed(2)}\n` +
       `Line Items: ${lineItems.totalItems} (${lineItems.deliveryItems.length} delivery, ${lineItems.productItems.length} product)\n\n` +
-      `This action cannot be undone.`
+      `Note: Due to QuickBooks API limitations, invoices cannot be truly deleted but will be marked for removal.`
     )) {
       try {
-        setMessage('Deleting invoice...');
+        setMessage('Attempting to delete invoice...');
         setMessageType('info');
         
         console.log(`Deleting invoice ${invoiceId}`);
@@ -288,8 +288,19 @@ const ManageInvoices = () => {
         }
       } catch (error) {
         console.error('Error deleting invoice:', error);
-        setMessage(error.response?.data?.error || 'Failed to delete invoice');
-        setMessageType('error');
+        
+        // Handle QuickBooks API limitations gracefully
+        if (error.response?.status === 400 && error.response?.data?.limitation) {
+          setMessage(
+            `⚠️ QuickBooks Limitation: ${error.response.data.details}\n\n` +
+            `${error.response.data.suggestion}\n\n` +
+            `The invoice remains visible here but you can void it directly in QuickBooks Online.`
+          );
+          setMessageType('info');
+        } else {
+          setMessage(error.response?.data?.error || error.message || 'Failed to delete invoice');
+          setMessageType('error');
+        }
       }
     }
   };
@@ -316,7 +327,7 @@ const ManageInvoices = () => {
       
       {message && (
         <div style={{ 
-          padding: '10px', 
+          padding: '15px', 
           margin: '10px 0',
           backgroundColor: 
             messageType === 'success' ? '#d4edda' : 
@@ -328,7 +339,9 @@ const ManageInvoices = () => {
             messageType === 'success' ? '#c3e6cb' : 
             messageType === 'info' ? '#bee5eb' : '#f5c6cb'
           }`,
-          borderRadius: '4px'
+          borderRadius: '4px',
+          whiteSpace: 'pre-line',
+          lineHeight: '1.5'
         }}>
           {message}
         </div>

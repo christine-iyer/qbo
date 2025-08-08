@@ -98,7 +98,7 @@ const DeliveryReport = () => {
       setCustomers(customersData);
       
       if (invoicesData.length > 0) {
-        setMessage(`Loaded ${invoicesData.length} invoice(s) and ${customersData.length} customer(s) for analysis`);
+        setMessage(`✅ Refreshed successfully! Loaded ${invoicesData.length} invoice(s) and ${customersData.length} customer(s) with latest address data.`);
         setMessageType('success');
       } else {
         setMessage('No invoices found. Create some invoices first!');
@@ -246,6 +246,8 @@ const DeliveryReport = () => {
   };
 
   const refreshReport = () => {
+    setMessage('Refreshing invoices and customer data...');
+    setMessageType('info');
     fetchData();
   };
 
@@ -623,9 +625,19 @@ const DeliveryReport = () => {
   return (
     <div style={{ padding: '20px', maxWidth: '1400px' }}>
       <h1>Delivery Report</h1>
-      <p style={{ color: '#666', marginBottom: '20px' }}>
+      <p style={{ color: '#666', marginBottom: '15px' }}>
         Track businesses delivered to and analyze your delivery performance. Default range shows today through the upcoming Friday to help plan your delivery route.
       </p>
+      <div style={{ 
+        backgroundColor: '#e7f3ff', 
+        border: '1px solid #b3d7ff', 
+        padding: '10px', 
+        borderRadius: '4px', 
+        marginBottom: '20px',
+        fontSize: '14px'
+      }}>
+        💡 <strong>Tip:</strong> If you've updated customer addresses in the "View Customers" tab, click "🔄 Refresh Data & Report" to see the latest address information in this report.
+      </div>
 
       {message && (
         <div style={{ 
@@ -694,7 +706,7 @@ const DeliveryReport = () => {
                 fontSize: '14px'
               }}
             >
-              {loading ? 'Loading...' : 'Refresh Report'}
+              {loading ? 'Loading...' : '🔄 Refresh Data & Report'}
             </button>
             <button 
               onClick={exportToCSV}

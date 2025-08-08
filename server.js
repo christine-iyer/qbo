@@ -826,60 +826,20 @@ app.delete('/api/invoice/:invoiceId', async (req, res) => {
       return res.status(400).json({ error: 'Missing invoiceId parameter' });
     }
 
-    console.log(`Deleting invoice ${invoiceId}`);
+    console.log(`Attempting to delete invoice ${invoiceId}`);
 
-    // First get the current invoice to get the SyncToken
-    const invoiceResponse = await axios.get(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice/${invoiceId}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json'
-      }
-    });
-
-    console.log('Invoice fetch response for deletion:', invoiceResponse.data);
-
-    // Handle different response structures
-    let invoice;
-    if (invoiceResponse.data.QueryResponse && invoiceResponse.data.QueryResponse.Invoice) {
-      invoice = invoiceResponse.data.QueryResponse.Invoice[0];
-    } else if (invoiceResponse.data.Invoice) {
-      invoice = invoiceResponse.data.Invoice;
-    } else {
-      throw new Error('Invoice not found in response');
-    }
-
-    console.log('Found invoice for deletion:', invoice.DocNumber);
+    // QuickBooks API does not support true deletion of invoices
+    // This is a fundamental limitation of the QuickBooks API
+    // Invoices can only be voided in the QuickBooks UI, not through the API
     
-    // QuickBooks uses "soft delete" - set Active to false
-    invoice.Active = false;
-
-    // Update the invoice to mark it as deleted
-    const deleteResponse = await axios.post(`https://sandbox-quickbooks.api.intuit.com/v3/company/${process.env.COMPANY_ID}/invoice`, invoice, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+    return res.status(400).json({ 
+      error: 'Invoice deletion not supported by QuickBooks API',
+      details: 'QuickBooks does not allow deletion of invoices through their API. Invoices can only be voided manually in the QuickBooks interface.',
+      limitation: 'This is a QuickBooks API limitation, not an application error.',
+      suggestion: 'To remove an invoice, you must void it directly in QuickBooks Online.',
+      invoiceId: invoiceId
     });
 
-    console.log('Delete response:', deleteResponse.data);
-
-    // Handle different response structures for delete
-    let deletedInvoice;
-    if (deleteResponse.data.QueryResponse && deleteResponse.data.QueryResponse.Invoice) {
-      deletedInvoice = deleteResponse.data.QueryResponse.Invoice[0];
-    } else if (deleteResponse.data.Invoice) {
-      deletedInvoice = deleteResponse.data.Invoice;
-    } else {
-      // Some operations might not return the invoice, which is okay for deletion
-      console.log('No invoice returned from delete operation, assuming success');
-    }
-
-    res.json({ 
-      success: true, 
-      message: 'Invoice deleted successfully',
-      invoiceId
-    });
   } catch (error) {
     console.error('Error deleting invoice:', error.response?.data || error.message);
     res.status(500).json({ 
