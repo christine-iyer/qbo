@@ -57,7 +57,7 @@ const CreateInvoice = () => {
       selectedItem: '',
       quantity: 1,
       amount: 0,
-      description: 'Product Delivery Service - Commission TBD'
+      description: 'Product Delivery Service'
     }
   ]);
 
