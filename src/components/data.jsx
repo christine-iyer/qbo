@@ -1,4 +1,59 @@
-const customersToImport = [{
+const customersToImport = [
+     {
+
+     name: "Midcoast Vegan Big Apple",
+     ShipAddr: {
+          Line1: "111 Pleasant St",
+          City: "Brunswick",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04011"
+     },
+},
+{
+     name: "Morning Glory",
+     ShipAddr: {
+          Line1: "60 Main St",
+          City: "Brunswick",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04011"
+     }},
+     {
+     name: "Wildflowers Gluten Free Bakery",
+     ShipAddr: {
+          Line1: "54 Cumberland St,",
+          City: "Brunswick",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04011"
+     }},
+     {
+     name: "Sundrenched (Front & Linden)",
+     ShipAddr: {
+          Line1: "244 Front St,",
+          City: "Bath",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04530"
+     }},
+      {
+     name: "Kennebec Meat Co.",
+     ShipAddr: {
+          Line1: "215 Water St,",
+          City: "Bath",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04530"
+     }},
+   
+   {
+     name: "Bath Natural Market",
+     ShipAddr: {
+          Line1: "36 Centre St",
+          City: "Bath",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04530"
+     }},
+
+
+     {
+
      name: "Good Tern",
      ShipAddr: {
           Line1: "750 Main Street",
@@ -125,22 +180,6 @@ const customersToImport = [{
           PostalCode: "04901"
      }},
    {
-     name: "Morning Glory",
-     ShipAddr: {
-          Line1: "60 Main St",
-          City: "Brunswick",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "04011"
-     }},
-   {
-     name: "Bath Natural Market",
-     ShipAddr: {
-          Line1: "36 Centre St",
-          City: "Bath",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "05430"
-     }},
-   {
      name: "Belfast Co-op",
      ShipAddr: {
           Line1: "123 high St",
@@ -159,3 +198,42 @@ const customersToImport = [{
 
 }]
 export default customersToImport;
+//      Midcoast Vegan (pick up at Big Apple in Brunswick)
+// Morning Glory Natural Foods
+// Wildflours Gluten Free Bakery (pick up)
+// Sundrenched (Linden+Front)
+// Kennebec Meat Co
+// Bath Natural Market
+// Pemaquid Falls Farm (Rising Tide)
+// Rising Tide Coop
+// Sammy's Deluxe
+// Good Tern Coop
+// Tenderwild Farm
+// Fresh Off the Farm
+// 3 Bug Farm
+// Owen's General Store
+// Ararat Farms
+// Marsh River (Spring St. Parking Lot Belfast)
+// Graze (pick up Spring St. Parking Lot)
+// Belfast Coop
+// Stockton Harbor (Stockton Springs Town Office)
+// Farm Drop (Blue Hill Berry Co)
+// Dennett's on the Wharf (Penobscot Volunteer Fire Department
+// Blue Hill Coop
+// Blue Hill Hannaford
+// Blue Hill Wine Shop
+// Buck's (Blue Hill Wine Shop)
+// Rooster Brother
+// Flexit
+// John Edward's
+// Black Moon Cafe
+// Triple Chick Farm (behind John Edward's)
+// Darthia Farm (behind John Edward's)
+// Mason's
+// Tiller and Rye
+// Miguel's 
+// Natural Living Center
+// Kanu
+// Tipped Trailer
+// Daybreak Growers Alliance
+// Uncle Dean's
