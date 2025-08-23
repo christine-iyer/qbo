@@ -51,9 +51,34 @@ const customersToImport = [
           PostalCode: "04530"
      }},
 
-
-     {
-
+{
+     name: "Rising Tide",
+     ShipAddr: {
+          Line1: "323 Main St",
+          City: "Damariscotta",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04543"
+     },
+},
+{
+     name: "Pemaquid Falls Farm",
+     ShipAddr: {
+          Line1: "123 Pemaquid Falls Rd",
+          City: "Bristol",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04539"
+     }
+},
+{
+     name: "Sammys's Deluxe",
+     ShipAddr: {
+          Line1: "488 Main St",
+          City: "Rockland",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04841"
+     }
+},   
+{
      name: "Good Tern",
      ShipAddr: {
           Line1: "750 Main Street",
@@ -81,24 +106,15 @@ const customersToImport = [
      },
 },
 {
-     name: "French and Braun",
+     name: "3 Bug Farm",
      ShipAddr: {
-          Line1: "1 Elm Street",
-          City: "Camden",
+          Line1: "11 Wiley Neck Rd",
+          City: "Lincolnville",
           CountrySubDivisionCode: "ME",
-          PostalCode: "04843"
-     },
-},
-{
-     name: "Megunticook",
-     ShipAddr: {
-          Line1: "2 Gould St",
-          City: "Camden",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "04843"
-     },
-},
-{
+          PostalCode: "04849"
+     }},
+
+     {
      name: "Owen's General Store",
      ShipAddr: {
           Line1: "269 Main Street",
@@ -107,29 +123,58 @@ const customersToImport = [
           PostalCode: "04849"
      },
 },
-{
-     name: "3 Bug Farm",
+
+{name: "Ararat Farms",
      ShipAddr: {
-          Line1: "11 Wiley Neck Rd",
+          Line1: "55 Vancycle Road",
           City: "Lincolnville",
           CountrySubDivisionCode: "ME",
           PostalCode: "04849"
-     }},
-   {
-     name: "Bahner Farm",
-     ShipAddr: {
-          Line1: "153 Augusta Rd",
-          City: "Belmont",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "04952"
-     }},
-   {
+     }
+},
+ {
      name: "Marsh River",
      ShipAddr: {
           Line1: "5 Veterans Highway",
           City: "Brooks",
           CountrySubDivisionCode: "ME",
           PostalCode: "04921"
+     }},
+     {name: "Graze",
+     ShipAddr: {
+          Line1: "28 Spring St",
+          City: "Belfast",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04915"
+     }},
+   {
+     name: "Belfast Co-op",
+     ShipAddr: {
+          Line1: "123 high St",
+          City: "Belfast",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04915"
+     }},
+     {name: "Stockton Harbor (Stockton Springs Town Office)",
+     ShipAddr: {
+          Line1: "217 Main St",
+          City: "Stockton Springs",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04981"
+     }},
+     {name: "Farm Drop (Blue Hill Berry Co)",
+     ShipAddr: {
+          Line1: "123 Main St",
+          City: "Blue Hill",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04614"
+     }},
+     {name: "Dennett's on the Wharf (Penobscot Volunteer Fire Department)",
+     ShipAddr: {
+          Line1: "123 Main St",
+          City: "Penobscot",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04476"
      }},
    {
      name: "Blue Hill Coop",
@@ -139,10 +184,56 @@ const customersToImport = [
           CountrySubDivisionCode: "ME",
           PostalCode: "04614"
      }},
-   {
+     
+      {
      name: "Blue Hill Hannaford",
      ShipAddr: {
           Line1: "16 South St",
+          City: "Blue Hill",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04614"
+     }},
+   {
+     name: "Megunticook",
+     ShipAddr: {
+          Line1: "2 Gould St",
+          City: "Camden",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04843"
+     },
+},
+
+
+   {
+     name: "Bahner Farm",
+     ShipAddr: {
+          Line1: "153 Augusta Rd",
+          City: "Belmont",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04952"
+     }},
+  
+     {
+     name: "French and Braun",
+     ShipAddr: {
+          Line1: "1 Elm Street",
+          City: "Camden",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04843"
+     },
+},
+   {
+     name: "Blue Hill Wine Shop",
+     ShipAddr: {
+          Line1: "138 Main St",
+          City: "Blue Hill",
+          CountrySubDivisionCode: "ME",
+          PostalCode: "04614"
+     }},
+     {
+     name: "Buck's (Blue Hill Wine Shop)",
+     ShipAddr: {
+          Line1: "138 Main St",
           City: "Blue Hill",
           CountrySubDivisionCode: "ME",
           PostalCode: "04614"
@@ -178,24 +269,8 @@ const customersToImport = [
           City: "Waterville",
           CountrySubDivisionCode: "ME",
           PostalCode: "04901"
-     }},
-   {
-     name: "Belfast Co-op",
-     ShipAddr: {
-          Line1: "123 high St",
-          City: "Belfast",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "04915"
-     }},
-   {
-     name: "Rising Tide",
-     ShipAddr: {
-          Line1: "323 Main St",
-          City: "Damariscotta",
-          CountrySubDivisionCode: "ME",
-          PostalCode: "04543"
-     },
-
+     }
+   
 }]
 export default customersToImport;
 //      Midcoast Vegan (pick up at Big Apple in Brunswick)
