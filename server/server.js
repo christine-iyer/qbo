@@ -1,13 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const config = require('./server/config/environment');
-const corsMiddleware = require('./server/middleware/cors');
+const config = require('./config/environment');
+const corsMiddleware = require('./middleware/cors');
 
 // Import routes
-const authRoutes = require('./server/routes/authRoutes');
-const customerRoutes = require('./server/routes/customerRoutes');
-const itemRoutes = require('./server/routes/itemRoutes');
-const invoiceRoutes = require('./server/routes/invoiceRoutes');
+const authRoutes = require('./routes/authRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const itemRoutes = require('./routes/itemRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
 
 const app = express();
 
