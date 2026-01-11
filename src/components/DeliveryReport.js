@@ -87,8 +87,8 @@ const DeliveryReport = () => {
     try {
       // Fetch both invoices and customers in parallel
       const [invoicesResponse, customersResponse] = await Promise.all([
-        axios.get('http://localhost:3001/invoices'),
-        axios.get('http://localhost:3001/customers')
+        axios.get(`${config.API_BASE_URL}/invoices`),
+        axios.get(`${config.API_BASE_URL}/customers`)
       ]);
       
       const invoicesData = invoicesResponse.data.invoices || [];

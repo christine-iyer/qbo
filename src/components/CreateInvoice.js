@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const CreateInvoice = () => {
   // Helper function to get the closest future Friday
@@ -182,7 +183,7 @@ const CreateInvoice = () => {
 
   const fetchCustomers = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/customers');
+      const response = await axios.get(`${config.API_BASE_URL}/customers`);
       setCustomers(response.data.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -193,7 +194,7 @@ const CreateInvoice = () => {
 
   const fetchItems = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/items');
+      const response = await axios.get(`${config.API_BASE_URL}/items`);
       setItems(response.data.items || []);
     } catch (error) {
       console.error('Error fetching items:', error);
@@ -304,7 +305,7 @@ const CreateInvoice = () => {
       console.log('Sending multi-line invoice data:', finalInvoice);
       console.log('Line items:', lineItems);
       
-      const response = await axios.post('http://localhost:3001/create-invoice', finalInvoice);
+      const response = await axios.post(`${config.API_BASE_URL}/create-invoice`, finalInvoice);
       console.log('Invoice created successfully', response.data);
       setMessage(`Invoice created successfully! Invoice ID: ${response.data.QueryResponse?.Invoice?.[0]?.Id || 'N/A'} with ${lineItems.length} line item(s)`);
       setMessageType('success');

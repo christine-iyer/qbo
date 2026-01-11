@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config';
 import destinations from './data.jsx';
 
 const BulkCustomerImport = () => {
@@ -16,7 +17,7 @@ const BulkCustomerImport = () => {
     try {
       console.log('Testing single customer creation...');
       
-      const response = await axios.post('http://localhost:3001/customers/test');
+      const response = await axios.post(`${config.API_BASE_URL}/customers/test`);
 
       console.log('Test customer response:', response.data);
 
@@ -57,7 +58,7 @@ const BulkCustomerImport = () => {
         }
       }));
 
-      const response = await axios.post('http://localhost:3001/customers/bulk', {
+      const response = await axios.post(`${config.API_BASE_URL}/customers/bulk`, {
         customers: customersToImport
       });
 

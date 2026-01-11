@@ -1,7 +1,8 @@
 import React from 'react';
+import config from '../config';
 
 // const CLIENT_ID = process.env.REACT_APP_CLIENT_ID;
-const REDIRECT_URI = 'http://localhost:3001/auth/callback';
+const REDIRECT_URI = `${config.API_BASE_URL}/auth/callback`;
 const STATE = 'random-generated-state-string';  // Generate a unique state string for security
 const SCOPE = 'com.intuit.quickbooks.accounting';
 

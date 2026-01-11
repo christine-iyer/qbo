@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const CreateCustomer = () => {
   const [customerData, setCustomerData] = useState({
@@ -103,7 +104,7 @@ const CreateCustomer = () => {
 
       console.log('Sending customer data:', JSON.stringify(qbCustomer, null, 2));
 
-      const response = await axios.post('http://localhost:3001/customers/create', qbCustomer);
+      const response = await axios.post(`${config.API_BASE_URL}/customers/create`, qbCustomer);
 
       if (response.data.success) {
         setMessage(`✅ Customer "${customerData.name}" created successfully! ID: ${response.data.customer.Id}`);

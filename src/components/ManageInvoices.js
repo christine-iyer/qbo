@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const ManageInvoices = () => {
   const [invoices, setInvoices] = useState([]);
@@ -90,7 +91,7 @@ const ManageInvoices = () => {
     setLoading(true);
     setMessage('');
     try {
-      const response = await axios.get('http://localhost:3001/invoices');
+      const response = await axios.get(`${config.API_BASE_URL}/invoices`);
       console.log('Fetched invoices:', response.data);
       const invoices = response.data.invoices || [];
       
@@ -231,7 +232,7 @@ const ManageInvoices = () => {
         console.log(`Deleting line item ${lineIndex} from invoice ${invoiceId}`);
         
         // Call backend API to delete line item in QuickBooks
-        const response = await axios.put('http://localhost:3001/api/delete-invoice-line', {
+        const response = await axios.put(`${config.API_BASE_URL}/api/delete-invoice-line`, {
           invoiceId,
           lineIndex
         });
@@ -276,7 +277,7 @@ const ManageInvoices = () => {
         console.log(`Deleting invoice ${invoiceId}`);
         
         // Call backend API to delete invoice in QuickBooks
-        const response = await axios.delete(`http://localhost:3001/api/invoice/${invoiceId}`);
+        const response = await axios.delete(`${config.API_BASE_URL}/api/invoice/${invoiceId}`);
         
         if (response.data.success) {
           // Remove from local state

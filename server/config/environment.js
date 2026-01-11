@@ -9,8 +9,8 @@ const config = {
   state: 'random-generated-state-string',
   quickbooksApiUrl: 'https://sandbox-quickbooks.api.intuit.com/v3',
   oauthTokenUrl: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
-  port: 3001,
-  clientUrl: 'http://localhost:3000'
+  port: process.env.PORT || 3001,
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:3000'
 };
 
 module.exports = config;

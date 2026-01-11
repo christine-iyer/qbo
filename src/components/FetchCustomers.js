@@ -15,7 +15,7 @@ const FetchCustomers = () => {
     setError(null);
     
     try {
-      const response = await axios.get('http://localhost:3001/customers');
+      const response = await axios.get(`${config.API_BASE_URL}/customers`);
       setCustomers(response.data.customers);
       setSampleStructure(response.data.sampleStructure);
       console.log('Customer data:', response.data);
@@ -69,7 +69,7 @@ const FetchCustomers = () => {
         ShipAddr: editFormData.ShipAddr
       };
 
-      const response = await axios.put(`http://localhost:3001/customers/${customerId}`, updateData);
+      const response = await axios.put(`${config.API_BASE_URL}/customers/${customerId}`, updateData);
       
       if (response.data.success) {
         // Refresh the customer list

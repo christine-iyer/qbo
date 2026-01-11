@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config';
 
 const ItemsList = () => {
   const [items, setItems] = useState([]);
@@ -11,7 +12,7 @@ const ItemsList = () => {
     setMessage('');
     
     try {
-      const response = await axios.get('http://localhost:3001/items');
+      const response = await axios.get(`${config.API_BASE_URL}/items`);
       console.log('Items response:', response.data);
       setItems(response.data.items || []);
       setMessage(`Found ${response.data.count || 0} items`);

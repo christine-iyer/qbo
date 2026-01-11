@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import config from '../config';
 import customersToImport from './data.jsx'; // Import your Maine destinations data
 
 const DeliveryDestinations = () => {
@@ -16,7 +17,7 @@ const DeliveryDestinations = () => {
 
   const fetchQBCustomers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/customers');
+      const response = await fetch(`${config.API_BASE_URL}/customers`);
       const data = await response.json();
       setQbCustomers(data.customers || []);
     } catch (error) {
@@ -55,7 +56,7 @@ const DeliveryDestinations = () => {
         }
       };
 
-      const response = await fetch(`http://localhost:3001/customers/${qbCustomer.Id}`, {
+      const response = await fetch(`${config.API_BASE_URL}/customers/${qbCustomer.Id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
