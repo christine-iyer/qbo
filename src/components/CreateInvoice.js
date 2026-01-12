@@ -146,6 +146,21 @@ const CreateInvoice = () => {
 
   // Fetch customers on component mount and check for pre-filled data
   useEffect(() => {
+    // Check for auth success parameter
+    const params = new URLSearchParams(window.location.search);
+    const authStatus = params.get('auth');
+    
+    if (authStatus === 'success') {
+      setMessage('Successfully authenticated with QuickBooks!');
+      setMessageType('success');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authStatus === 'failed') {
+      const error = params.get('error');
+      setMessage(`Authentication failed: ${error || 'Unknown error'}`);
+      setMessageType('error');
+    }
+    
     fetchCustomers();
     fetchItems();
     

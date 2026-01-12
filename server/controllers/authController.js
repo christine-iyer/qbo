@@ -3,6 +3,15 @@ const config = require('../config/environment');
 const ResponseHandler = require('../utils/responseHandler');
 
 class AuthController {
+  async checkAuth(req, res) {
+    const isAuthenticated = quickbooksClient.isAuthenticated();
+    const companyId = quickbooksClient.getCompanyId();
+    
+    res.json({ 
+      authenticated: isAuthenticated,
+      companyId: companyId
+    });
+  }
   async handleCallback(req, res) {
     const { code, state, realmId } = req.query;
     
@@ -10,7 +19,8 @@ class AuthController {
     
     // Verify state parameter
     if (state !== config.state) {
-      return ResponseHandler.badRequest(res, 'Invalid state parameter');
+      console.error('State mismatch - Expected:', config.state, 'Received:', state);
+      return res.redirect(`${config.clientUrl}/?auth=failed&error=invalid_state`);
     }
     
     try {
@@ -25,10 +35,11 @@ class AuthController {
       console.log('Token exchange successful');
       console.log('Company ID (realmId):', realmId);
       
-      res.redirect(`${config.clientUrl}/create-invoice`);
+      // Redirect with success parameter
+      res.redirect(`${config.clientUrl}/create-invoice?auth=success`);
     } catch (error) {
       console.error('Error during token exchange:', error.response?.data || error.message);
-      res.status(500).send('Authentication failed');
+      res.redirect(`${config.clientUrl}/?auth=failed&error=${encodeURIComponent(error.message)}`);
     }
   }
 }
