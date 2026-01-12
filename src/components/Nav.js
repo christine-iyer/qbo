@@ -30,6 +30,12 @@ export default function Nav(props) {
       <Link to="/delivery-destinations">
         <div>Manage Destinations</div>
       </Link>
+      <Link to="/terms">
+        <div>Terms of Service</div>
+      </Link>
+      <Link to="/privacy">
+        <div>Privacy Policy</div>
+      </Link>
     </div>
   );
 }
