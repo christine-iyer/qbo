@@ -36,6 +36,8 @@ const QuickBooksAuth = () => {
       });
     } catch (err) {
       console.error('Error checking auth status:', err);
+      // If endpoint doesn't exist (404/401), assume not authenticated
+      // This is expected until backend is updated with the new endpoint
       setAuthStatus({ loading: false, authenticated: false, companyId: null });
     }
   };
