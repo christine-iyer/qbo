@@ -17,7 +17,7 @@ const FetchCustomers = () => {
     
     try {
       console.log('Fetching from:', `${config.API_BASE_URL}/auth/customers`);
-      const response = await axios.get(`${config.API_BASE_URL}/auth/customers`);
+      const response = await axios.get(`${config.API_BASE_URL}/tortilla/customers`);
       console.log('Full API Response:', response);
       console.log('Response data:', response.data);
       console.log('Customers array:', response.data.customers);
