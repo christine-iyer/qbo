@@ -16,13 +16,34 @@ const FetchCustomers = () => {
     setError(null);
     
     try {
-      const response = await axios.get(`${config.API_BASE_URL}/customers`);
-      setCustomers(response.data.customers);
-      setSampleStructure(response.data.sampleStructure);
-      console.log('Customer data:', response.data);
+      console.log('Fetching from:', `${config.API_BASE_URL}/auth/customers`);
+      const response = await axios.get(`${config.API_BASE_URL}/auth/customers`);
+      console.log('Full API Response:', response);
+      console.log('Response data:', response.data);
+      console.log('Customers array:', response.data.customers);
+      console.log('Number of customers:', response.data.customers?.length || 0);
+      
+      // Check if response is valid JSON with customers array
+      if (response.data && typeof response.data === 'object') {
+        setCustomers(response.data.customers || []);
+        setSampleStructure(response.data.sampleStructure);
+      } else {
+        throw new Error('Invalid response format from API');
+      }
     } catch (error) {
-      setError(error.response?.data?.error || 'Failed to fetch customers');
-      console.error('Error fetching customers:', error);
+      console.error('Full error object:', error);
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
+      
+      // Check if we got HTML instead of JSON
+      if (error.message.includes('Unexpected token') || error.message.includes('JSON')) {
+        setError('API endpoint returned HTML instead of JSON. The backend may not be running or the endpoint is incorrect.');
+      } else if (error.response?.status === 401) {
+        setError('Not authenticated with QuickBooks. Please go to the QuickBooks Auth page and connect your account first.');
+      } else {
+        setError(error.response?.data?.error || error.message || 'Failed to fetch customers');
+      }
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -114,6 +135,16 @@ const FetchCustomers = () => {
   return (
     <div style={{ padding: '20px' }}>
       <h1>QuickBooks Customers</h1>
+      
+      <div style={{ background: '#e3f2fd', padding: '10px', borderRadius: '5px', marginBottom: '10px' }}>
+        <small>
+          <strong>API Endpoint:</strong> {config.API_BASE_URL}/customers
+          <br />
+          <strong>Status:</strong> {loading ? 'Loading...' : `Found ${customers.length} customers`}
+          <br />
+          <strong>Tip:</strong> Check browser console for detailed logs. If getting HTML instead of JSON, your backend URL may be incorrect.
+        </small>
+      </div>
       
       <button onClick={fetchCustomers} disabled={loading}>
         {loading ? 'Loading...' : 'Refresh Customers'}
