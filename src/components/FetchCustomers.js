@@ -16,7 +16,7 @@ const FetchCustomers = () => {
     setError(null);
     
     try {
-      console.log('Fetching from:', `${config.API_BASE_URL}/auth/customers`);
+      console.log('Fetching from:', `${config.API_BASE_URL}/tortilla/customers`);
       const response = await axios.get(`${config.API_BASE_URL}/tortilla/customers`);
       console.log('Full API Response:', response);
       console.log('Response data:', response.data);
@@ -40,6 +40,8 @@ const FetchCustomers = () => {
         setError('API endpoint returned HTML instead of JSON. The backend may not be running or the endpoint is incorrect.');
       } else if (error.response?.status === 401) {
         setError('Not authenticated with QuickBooks. Please go to the QuickBooks Auth page and connect your account first.');
+      } else if (error.response?.status === 403) {
+        setError('Access forbidden (403). Your QuickBooks token has likely expired or your app lacks permission. Please re-authenticate on the QuickBooks Auth page.');
       } else {
         setError(error.response?.data?.error || error.message || 'Failed to fetch customers');
       }
