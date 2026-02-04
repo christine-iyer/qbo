@@ -36,6 +36,9 @@ export default function Nav(props) {
       <Link to="/privacy">
         <div>Privacy Policy</div>
       </Link>
+      <Link to="/logout">
+        <div style={{ color: '#d32f2f', fontWeight: 'bold' }}>🚪 Logout</div>
+      </Link>
     </div>
   );
 }

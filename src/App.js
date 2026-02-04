@@ -8,6 +8,7 @@ import ItemsList from './components/ItemsList';
 import DeliveryReport from './components/DeliveryReport';
 import DeliveryDestinations from './components/DeliveryDestinations';
 import BulkCustomerImport from './components/BulkCustomerImport';
+import Logout from './components/Logout';
 import Nav from './components/Nav';
 import okeyDokey from './okeydonkey.PNG';
 function App(){
@@ -28,6 +29,7 @@ function App(){
       <Route path="/items" element={<ItemsList />} />
       <Route path="/delivery-report" element={<DeliveryReport />} />
       <Route path="/delivery-destinations" element={<DeliveryDestinations />} />
+      <Route path="/logout" element={<Logout />} />
       <Route path="/terms" element={<iframe src="/eula.html" style={{width: '100%', height: '100vh', border: 'none'}} title="Terms of Service" />} />
       <Route path="/privacy" element={<iframe src="/privacy.html" style={{width: '100%', height: '100vh', border: 'none'}} title="Privacy Policy" />} />
     </Routes>
