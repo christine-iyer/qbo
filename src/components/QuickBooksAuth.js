@@ -29,11 +29,41 @@ const QuickBooksAuth = () => {
   const checkAuthStatus = async () => {
     try {
       const response = await axios.get(`${config.API_BASE_URL}/auth/status`);
-      setAuthStatus({
-        loading: false,
-        authenticated: response.data.authenticated,
-        companyId: response.data.companyId
-      });
+      const isAuthenticated = response.data?.authenticated === true && Boolean(response.data?.companyId);
+
+      if (!isAuthenticated) {
+        setAuthStatus({
+          loading: false,
+          authenticated: false,
+          companyId: null
+        });
+        return;
+      }
+
+      try {
+        await axios.get(`${config.API_BASE_URL}/tortilla/customers`);
+        setAuthStatus({
+          loading: false,
+          authenticated: true,
+          companyId: response.data.companyId
+        });
+      } catch (validationError) {
+        const status = validationError.response?.status;
+        if (status === 401 || status === 403) {
+          setError('QuickBooks session expired. Please reconnect.');
+          setAuthStatus({
+            loading: false,
+            authenticated: false,
+            companyId: null
+          });
+        } else {
+          setAuthStatus({
+            loading: false,
+            authenticated: true,
+            companyId: response.data.companyId
+          });
+        }
+      }
     } catch (err) {
       console.error('Error checking auth status:', err);
       // If endpoint doesn't exist (404/401), assume not authenticated
@@ -75,6 +105,21 @@ const QuickBooksAuth = () => {
           <h3>✓ Connected to QuickBooks</h3>
           <p>Company ID: {authStatus.companyId}</p>
           <p>You can now use all features of the application.</p>
+          <button
+            onClick={checkAuthStatus}
+            style={{
+              marginTop: '12px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Recheck Status
+          </button>
         </div>
       ) : (
         <div>
@@ -93,6 +138,21 @@ const QuickBooksAuth = () => {
             }}
           >
             Connect to QuickBooks
+          </button>
+          <button
+            onClick={checkAuthStatus}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              fontSize: '16px',
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Recheck Status
           </button>
         </div>
       )}
