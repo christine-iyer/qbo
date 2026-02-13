@@ -1,5 +1,5 @@
 # Invoice Me - QuickBooks OAuth Invoice Application
-
+2/13/26 Getting a 403 error, somehow the server is not passing the token to fetch users. Considering starting over because I have just been granted most admin permissions on quickbooks. So I should go into my account, sign in as a developer...app is in development, get token and secret. need account number. need endpoint and callback url. Will need to change envt variables in all envirmonments including in digital ocean. 
 A full-stack application for creating and managing invoices through QuickBooks Online integration with OAuth authentication.
 
 ### Production Deployment Guide - August 6, 2025
